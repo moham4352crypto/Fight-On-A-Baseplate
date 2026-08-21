@@ -20,8 +20,10 @@
         #respawn-screen h1 { font-size: 42px; margin: 0; color: #ff3333; }
         #respawn-screen p { font-size: 20px; margin-top: 10px; }
 
-        /* Bedwars Damage Numbers */
-        .damage-pop { position: absolute; color: #ffcc00; font-size: 26px; font-weight: 900; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; }
+        /* Damage Numbers (Normal & Crit) */
+        .damage-pop { position: absolute; font-weight: 900; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; }
+        .damage-pop.normal { color: #ffcc00; font-size: 26px; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+        .damage-pop.crit { color: #ff2200; font-size: 34px; text-shadow: 0 0 10px rgba(255, 34, 0, 0.8), 2px 2px 0 #000, -2px -2px 0 #000; }
 
         /* Reticles */
         #shiftlock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border: 2px solid cyan; border-radius: 50%; display: none; pointer-events: none; z-index: 5; }
@@ -44,7 +46,8 @@
         <div id="health-bar"><div id="health-fill"></div></div>
         <div style="margin-top: 8px; font-size: 11px; opacity: 0.9;">
             [Shift] Shift Lock | [Right-Click Drag] Orbit | [Scroll] Zoom<br>
-            [WASD] Camera-Relative Move | [E] Dash | [L-Click] Attack
+            [WASD] Camera-Relative Move | [E] Dash | [L-Click] Attack<br>
+            <span style="color: #ffcc00;">[Jump + Attack] = CRIT HIT (15 DMG)</span>
         </div>
     </div>
 
@@ -92,7 +95,8 @@
             rotY: 0,
             health: 100,
             kbX: 0,
-            kbZ: 0
+            kbZ: 0,
+            kbY: 0
         };
         playerRef.set(spawnPos);
 
@@ -260,7 +264,7 @@
         }
 
         // --- 4. FLOATING DAMAGE & KILL FEED UI ---
-        function spawnDamagePop(position3D, amount = 10) {
+        function spawnDamagePop(position3D, amount = 10, isCrit = false) {
             const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
             vec.project(camera);
 
@@ -268,8 +272,8 @@
             const y = (-(vec.y * 0.5) + 0.5) * window.innerHeight;
 
             const pop = document.createElement('div');
-            pop.className = 'damage-pop';
-            pop.innerText = '-' + amount;
+            pop.className = `damage-pop ${isCrit ? 'crit' : 'normal'}`;
+            pop.innerText = isCrit ? `-${amount} CRIT!` : `-${amount}`;
             pop.style.left = `${x}px`;
             pop.style.top = `${y}px`;
 
@@ -286,29 +290,45 @@
             setTimeout(() => msg.remove(), 4500);
         }
 
-        // --- 5. COMBAT & ATTACK ---
+        // --- 5. COMBAT & ATTACK (CRITS & MAX REACH) ---
         function attack() {
             isSwinging = true;
             const originalRotX = player.rig.rightArmGroup.rotation.x;
             player.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
 
+            // Crit Check: Jump Attack deals 15 damage
+            const isCrit = !isGrounded;
+            const damage = isCrit ? 15 : 10;
+
+            // Maximum reach: Ground = 4.2 units | In Sky = 2.6 units (harder to hit back when launched)
+            const maxReach = isGrounded ? 4.2 : 2.6;
+
             for (let id in remotePlayers) {
                 const target = remotePlayers[id];
-                if (player.position.distanceTo(target.position) < 4.2) {
-                    const kbDir = target.position.clone().sub(player.position).normalize();
-                    const knockbackForce = 1.8;
+                const dist = player.position.distanceTo(target.position);
 
-                    spawnDamagePop(target.position, 10);
+                if (dist <= maxReach) {
+                    const kbDir = target.position.clone().sub(player.position).normalize();
+                    const knockbackForce = 1.7;
+                    const upwardPopForce = 0.32; // Air launch
+
+                    // Instant visual push on attacker screen
+                    target.position.x += kbDir.x * knockbackForce;
+                    target.position.z += kbDir.z * knockbackForce;
+                    target.position.y += 0.5;
+
+                    spawnDamagePop(target.position, damage, isCrit);
 
                     const targetRef = db.ref('players/' + id);
                     targetRef.once('value', (snapshot) => {
                         const data = snapshot.val();
                         if (data && data.health > 0) {
-                            const newHealth = Math.max(0, data.health - 10);
+                            const newHealth = Math.max(0, data.health - damage);
                             targetRef.update({ 
                                 health: newHealth,
                                 kbX: kbDir.x * knockbackForce,
-                                kbZ: kbDir.z * knockbackForce
+                                kbZ: kbDir.z * knockbackForce,
+                                kbY: upwardPopForce // Pop into air
                             });
                         }
                     });
@@ -360,7 +380,8 @@
                         z: player.position.z,
                         health: 100,
                         kbX: 0,
-                        kbZ: 0
+                        kbZ: 0,
+                        kbY: 0
                     });
                 }
             }, 1000);
@@ -384,15 +405,23 @@
             const data = snapshot.val();
 
             if (id === myId) {
-                if (data.kbX || data.kbZ) {
-                    kbVelX = data.kbX;
-                    kbVelZ = data.kbZ;
-                    playerRef.update({ kbX: 0, kbZ: 0 });
+                // Apply impulses from hits
+                if (data.kbX || data.kbZ || data.kbY) {
+                    kbVelX = data.kbX || 0;
+                    kbVelZ = data.kbZ || 0;
+                    
+                    if (data.kbY) {
+                        velocityY = data.kbY; // Launch into air
+                        isGrounded = false;
+                    }
+
+                    playerRef.update({ kbX: 0, kbZ: 0, kbY: 0 });
                 }
 
                 if (data.health !== undefined && data.health !== health) {
                     if (data.health < health) {
-                        spawnDamagePop(player.position, health - data.health);
+                        const dmgTaken = health - data.health;
+                        spawnDamagePop(player.position, dmgTaken, dmgTaken > 10);
                     }
 
                     health = data.health;
