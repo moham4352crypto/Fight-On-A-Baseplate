@@ -4,24 +4,50 @@
     <meta charset="UTF-8">
     <title>Fight on a Baseplate</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: monospace; user-select: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background: #111; }
         
-        /* UI HUD */
-        #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 6px; pointer-events: none; z-index: 10; }
-        #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 3px; }
+        /* Main Start Menu */
+        #main-menu {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(12, 16, 24, 0.88); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 100; color: white;
+        }
+        #main-menu h1 { font-size: 52px; margin-bottom: 10px; text-shadow: 0 0 20px rgba(0,162,255,0.6); letter-spacing: 2px; }
+        #main-menu p { font-size: 18px; color: #aaa; margin-bottom: 30px; }
+        .menu-btn-container { display: flex; flex-direction: column; gap: 14px; width: 280px; }
+        .menu-btn {
+            padding: 14px 20px; font-size: 18px; font-weight: bold; color: white;
+            border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+            text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .btn-ffa { background: linear-gradient(135deg, #0072ff, #00c6ff); }
+        .btn-easy { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .btn-medium { background: linear-gradient(135deg, #f2994a, #f2c94c); }
+        .btn-hard { background: linear-gradient(135deg, #eb3349, #f45c43); }
+        .menu-btn:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.15); }
+        .menu-btn:active { transform: translateY(1px); }
+
+        /* In-Game UI HUD */
+        #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 8px; pointer-events: none; z-index: 10; font-family: monospace; display: none; }
+        #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
         #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
         
+        /* Mode Switcher Button (Top Left) */
+        #menu-return-btn { position: absolute; top: 15px; left: 280px; z-index: 10; padding: 8px 14px; background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 6px; cursor: pointer; display: none; font-weight: bold; }
+        #menu-return-btn:hover { background: rgba(255,255,255,0.4); }
+
         /* Kill Feed */
-        #killfeed { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 10; }
+        #killfeed { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 10; font-family: monospace; }
         .kill-msg { background: rgba(0,0,0,0.75); color: #ff4444; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; border-right: 3px solid #ff4444; animation: fadeOut 4.5s forwards; }
 
         /* Respawn Overlay */
-        #respawn-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; }
+        #respawn-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; font-family: monospace; }
         #respawn-screen h1 { font-size: 42px; margin: 0; color: #ff3333; }
         #respawn-screen p { font-size: 20px; margin-top: 10px; }
 
         /* Damage Numbers (Normal & Crit) */
-        .damage-pop { position: absolute; font-weight: 900; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; }
+        .damage-pop { position: absolute; font-weight: 900; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; font-family: monospace; }
         .damage-pop.normal { color: #ffcc00; font-size: 26px; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
         .damage-pop.crit { color: #ff2200; font-size: 34px; text-shadow: 0 0 10px rgba(255, 34, 0, 0.8), 2px 2px 0 #000, -2px -2px 0 #000; }
 
@@ -41,16 +67,31 @@
     </style>
 </head>
 <body>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="main-menu">
+        <h1>FIGHT ON A BASEPLATE</h1>
+        <p>Select a Game Mode to Start Playing</p>
+        <div class="menu-btn-container">
+            <button class="menu-btn btn-ffa" onclick="startGame('ffa')">🌐 FFA (Multiplayer)</button>
+            <button class="menu-btn btn-easy" onclick="startGame('bot_easy')">🤖 Bot - Easy</button>
+            <button class="menu-btn btn-medium" onclick="startGame('bot_medium')">🤖 Bot - Medium</button>
+            <button class="menu-btn btn-hard" onclick="startGame('bot_hard')">🔥 Bot - Hard</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
     <div id="ui">
         <div>HEALTH: <span id="hp-text">100</span>/100</div>
         <div id="health-bar"><div id="health-fill"></div></div>
         <div style="margin-top: 8px; font-size: 11px; opacity: 0.9;">
             [Shift] Shift Lock | [Right-Click Drag] Orbit | [Scroll] Zoom<br>
-            [WASD] Camera-Relative Move | [E] Dash | [L-Click] Attack<br>
+            [WASD] Camera Move | [E] Dash | [L-Click] Attack<br>
             <span style="color: #ffcc00;">[Jump + Attack] = CRIT HIT (15 DMG)</span>
         </div>
     </div>
 
+    <button id="menu-return-btn" onclick="returnToMenu()">⚙️ Main Menu</button>
     <div id="killfeed"></div>
     <div id="shiftlock-icon"></div>
 
@@ -81,24 +122,13 @@
         const db = firebase.database();
 
         const myId = 'Player_' + Math.floor(1000 + Math.random() * 9000);
-        const playerRef = db.ref('players/' + myId);
-        const playersRef = db.ref('players');
-        playerRef.onDisconnect().remove();
+        let playerRef = null;
+        let playersRef = null;
 
         const BASEPLATE_SIZE = 250;
         const HALF_BASEPLATE = BASEPLATE_SIZE / 2;
 
-        const spawnPos = {
-            x: (Math.random() - 0.5) * 30,
-            y: 0,
-            z: (Math.random() - 0.5) * 30,
-            rotY: 0,
-            health: 100,
-            kbX: 0,
-            kbZ: 0,
-            kbY: 0
-        };
-        playerRef.set(spawnPos);
+        let activeGameMode = 'menu'; // 'ffa', 'bot_easy', 'bot_medium', 'bot_hard'
 
         // --- 2. THREE.JS SCENE SETUP ---
         const scene = new THREE.Scene();
@@ -128,7 +158,7 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Roblox Avatar Builder
+        // Avatar Generator
         function createRobloxR6(shirtColor = 0x00a2ff, legColor = 0x111111) {
             const avatar = new THREE.Group();
 
@@ -194,10 +224,13 @@
         }
 
         const player = createRobloxR6(0x00a2ff, 0x1b2a4a);
-        player.position.set(spawnPos.x, 0, spawnPos.z);
+        player.position.set(0, 0, 0);
         scene.add(player);
 
         const remotePlayers = {};
+
+        // Bot AI Object
+        let activeBot = null;
 
         // --- 3. CONTROLS & GAMEPLAY VARS ---
         let isShiftLock = false;
@@ -214,14 +247,13 @@
         let velocityY = 0;
         let isGrounded = true;
 
-        // Knockback Impulse Physics
         let kbVelX = 0;
         let kbVelZ = 0;
 
         const keys = {};
 
         document.addEventListener('keydown', (e) => {
-            if (isDead) return;
+            if (isDead || activeGameMode === 'menu') return;
             keys[e.code] = true;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') toggleShiftLock();
             if (e.code === 'KeyE' && canDash) triggerDash();
@@ -229,7 +261,7 @@
         document.addEventListener('keyup', (e) => keys[e.code] = false);
 
         document.addEventListener('mousedown', (e) => {
-            if (isDead) return;
+            if (isDead || activeGameMode === 'menu') return;
             if (e.button === 2) isRightMouseDown = true;
             if (e.button === 0 && !isSwinging) attack();
         });
@@ -239,6 +271,7 @@
         document.addEventListener('contextmenu', e => e.preventDefault());
 
         document.addEventListener('mousemove', (e) => {
+            if (activeGameMode === 'menu') return;
             if (isShiftLock || isRightMouseDown) {
                 camYaw -= e.movementX * 0.0035;
                 camPitch = Math.max(-1.2, Math.min(1.2, camPitch - e.movementY * 0.0035));
@@ -246,6 +279,7 @@
         });
 
         document.addEventListener('wheel', (e) => {
+            if (activeGameMode === 'menu') return;
             camDistance = Math.max(4, Math.min(30, camDistance + e.deltaY * 0.012));
         });
 
@@ -263,7 +297,204 @@
             setTimeout(() => canDash = true, 800);
         }
 
-        // --- 4. FLOATING DAMAGE & KILL FEED UI ---
+        // --- 4. GAME START & MENU CONTROL ---
+        function startGame(mode) {
+            activeGameMode = mode;
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('ui').style.display = 'block';
+            document.getElementById('menu-return-btn').style.display = 'block';
+
+            // Reset local player
+            health = 100;
+            isDead = false;
+            player.visible = true;
+            player.position.set(0, 0, 0);
+            document.getElementById('hp-text').innerText = 100;
+            document.getElementById('health-fill').style.width = '100%';
+
+            // Clear existing bots
+            if (activeBot) {
+                scene.remove(activeBot.mesh);
+                activeBot = null;
+            }
+
+            if (mode === 'ffa') {
+                initFirebaseMultiplayer();
+            } else {
+                // Initialize Offline Bot
+                spawnBot(mode);
+            }
+        }
+
+        function returnToMenu() {
+            activeGameMode = 'menu';
+            document.getElementById('main-menu').style.display = 'flex';
+            document.getElementById('ui').style.display = 'none';
+            document.getElementById('menu-return-btn').style.display = 'none';
+            if (document.pointerLockElement) document.exitPointerLock();
+
+            // Cleanup Bot
+            if (activeBot) {
+                scene.remove(activeBot.mesh);
+                activeBot = null;
+            }
+        }
+
+        // --- 5. BOT AI SYSTEM ---
+        function spawnBot(difficultyMode) {
+            const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
+            botMesh.position.set(0, 0, -12); // Spawn facing player
+            scene.add(botMesh);
+
+            let speed = 0.12;
+            if (difficultyMode === 'bot_medium') speed = 0.20;
+            if (difficultyMode === 'bot_hard') speed = 0.28;
+
+            activeBot = {
+                mesh: botMesh,
+                health: 100,
+                maxHealth: 100,
+                speed: speed,
+                difficulty: difficultyMode,
+                isSwinging: false,
+                lastAttackTime: 0,
+                lastJumpTime: 0,
+                velocityY: 0,
+                isGrounded: true,
+                kbVelX: 0,
+                kbVelZ: 0,
+                isDead: false,
+                walkCycleTime: 0
+            };
+        }
+
+        function updateBotAI() {
+            if (!activeBot || activeBot.isDead || isDead) return;
+
+            const bot = activeBot;
+
+            // Apply Knockback Friction
+            bot.mesh.position.x += bot.kbVelX;
+            bot.mesh.position.z += bot.kbVelZ;
+            bot.kbVelX *= 0.82;
+            bot.kbVelZ *= 0.82;
+
+            // Distance to player
+            const dist = bot.mesh.position.distanceTo(player.position);
+            const now = Date.now();
+
+            // Face towards player
+            const dx = player.position.x - bot.mesh.position.x;
+            const dz = player.position.z - bot.mesh.position.z;
+            bot.mesh.rotation.y = Math.atan2(dx, dz);
+
+            // Movement logic
+            if (dist > 3.8) {
+                const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
+                bot.mesh.position.x += moveDir.x * bot.speed;
+                bot.mesh.position.z += moveDir.z * bot.speed;
+
+                // Bot Walking Animation
+                bot.walkCycleTime += 0.18;
+                const swing = Math.sin(bot.walkCycleTime) * 0.7;
+                bot.mesh.rig.leftArmGroup.rotation.x = swing;
+                if (!bot.isSwinging) bot.mesh.rig.rightArmGroup.rotation.x = -swing;
+                bot.mesh.rig.leftLegGroup.rotation.x = -swing;
+                bot.mesh.rig.rightLegGroup.rotation.x = swing;
+            }
+
+            // Hard Bot Jumps for CRITS!
+            if (bot.difficulty === 'bot_hard' && dist <= 6.5 && bot.isGrounded && now - bot.lastJumpTime > 2000) {
+                bot.velocityY = 0.32;
+                bot.isGrounded = false;
+                bot.lastJumpTime = now;
+            }
+
+            // Gravity & Jump Physics for Bot
+            bot.mesh.position.y += bot.velocityY;
+            if (bot.mesh.position.y <= 0) {
+                bot.mesh.position.y = 0;
+                bot.velocityY = 0;
+                bot.isGrounded = true;
+            } else {
+                bot.velocityY -= 0.018;
+                bot.isGrounded = false;
+            }
+
+            // Bot Attack Logic (Max Reach: 6.5 units)
+            let attackCooldown = 1500;
+            if (bot.difficulty === 'bot_medium') attackCooldown = 900;
+            if (bot.difficulty === 'bot_hard') attackCooldown = 450;
+
+            if (dist <= 6.5 && now - bot.lastAttackTime > attackCooldown && !bot.isSwinging) {
+                bot.isSwinging = true;
+                bot.lastAttackTime = now;
+
+                const origRotX = bot.mesh.rig.rightArmGroup.rotation.x;
+                bot.mesh.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
+
+                // Bot Damage: Crit if airborne
+                const isCrit = !bot.isGrounded;
+                const botDmg = isCrit ? 15 : 10;
+
+                // Deal damage to player
+                health = Math.max(0, health - botDmg);
+                document.getElementById('hp-text').innerText = health;
+                document.getElementById('health-fill').style.width = health + '%';
+
+                // Player Knockback Impulse
+                const kbDir = player.position.clone().sub(bot.mesh.position).normalize();
+                kbVelX = kbDir.x * 1.5;
+                kbVelZ = kbDir.z * 1.5;
+                velocityY = 0.28; // Air pop
+                isGrounded = false;
+
+                spawnDamagePop(player.position, botDmg, isCrit);
+
+                if (health <= 0 && !isDead) {
+                    addKillFeed(`Bot defeated ${myId}`);
+                    triggerRespawn();
+                }
+
+                setTimeout(() => {
+                    bot.mesh.rig.rightArmGroup.rotation.x = origRotX;
+                    bot.isSwinging = false;
+                }, 250);
+            }
+        }
+
+        function damageBot(amount, isCrit) {
+            if (!activeBot || activeBot.isDead) return;
+
+            activeBot.health -= amount;
+            
+            // Knockback impulse on bot
+            const kbDir = activeBot.mesh.position.clone().sub(player.position).normalize();
+            activeBot.kbVelX = kbDir.x * 1.7;
+            activeBot.kbVelZ = kbDir.z * 1.7;
+            activeBot.velocityY = 0.30; // Air launch
+            activeBot.isGrounded = false;
+
+            spawnDamagePop(activeBot.mesh.position, amount, isCrit);
+
+            if (activeBot.health <= 0) {
+                activeBot.isDead = true;
+                activeBot.mesh.visible = false;
+                addKillFeed(`You defeated Bot (${activeBot.difficulty.replace('bot_', '').toUpperCase()})`);
+
+                // Respawn Bot after 3s
+                setTimeout(() => {
+                    if (activeBot) {
+                        activeBot.health = 100;
+                        activeBot.isDead = false;
+                        activeBot.mesh.position.set((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20 - 10);
+                        activeBot.mesh.visible = true;
+                    }
+                }, 3000);
+            }
+        }
+
+        // --- 6. FLOATING DAMAGE & KILL FEED UI ---
         function spawnDamagePop(position3D, amount = 10, isCrit = false) {
             const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
             vec.project(camera);
@@ -290,7 +521,7 @@
             setTimeout(() => msg.remove(), 4500);
         }
 
-        // --- 5. COMBAT & ATTACK (CRITS & MAX REACH) ---
+        // --- 7. COMBAT & ATTACK (REACH ADJUSTED TO MATCH IMAGE) ---
         function attack() {
             isSwinging = true;
             const originalRotX = player.rig.rightArmGroup.rotation.x;
@@ -300,38 +531,49 @@
             const isCrit = !isGrounded;
             const damage = isCrit ? 15 : 10;
 
-            // Maximum reach: Ground = 4.2 units | In Sky = 2.6 units (harder to hit back when launched)
-            const maxReach = isGrounded ? 4.2 : 2.6;
+            // Ground Reach extended to 6.5 units (Matches screenshot gap)
+            // Air Reach: 4.0 units
+            const maxReach = isGrounded ? 6.5 : 4.0;
 
-            for (let id in remotePlayers) {
-                const target = remotePlayers[id];
-                const dist = player.position.distanceTo(target.position);
-
+            // Offline Bot Attack
+            if (activeGameMode !== 'ffa' && activeBot && !activeBot.isDead) {
+                const dist = player.position.distanceTo(activeBot.mesh.position);
                 if (dist <= maxReach) {
-                    const kbDir = target.position.clone().sub(player.position).normalize();
-                    const knockbackForce = 1.7;
-                    const upwardPopForce = 0.32; // Air launch
+                    damageBot(damage, isCrit);
+                }
+            }
 
-                    // Instant visual push on attacker screen
-                    target.position.x += kbDir.x * knockbackForce;
-                    target.position.z += kbDir.z * knockbackForce;
-                    target.position.y += 0.5;
+            // Online FFA Attack
+            if (activeGameMode === 'ffa') {
+                for (let id in remotePlayers) {
+                    const target = remotePlayers[id];
+                    const dist = player.position.distanceTo(target.position);
 
-                    spawnDamagePop(target.position, damage, isCrit);
+                    if (dist <= maxReach) {
+                        const kbDir = target.position.clone().sub(player.position).normalize();
+                        const knockbackForce = 1.7;
+                        const upwardPopForce = 0.32;
 
-                    const targetRef = db.ref('players/' + id);
-                    targetRef.once('value', (snapshot) => {
-                        const data = snapshot.val();
-                        if (data && data.health > 0) {
-                            const newHealth = Math.max(0, data.health - damage);
-                            targetRef.update({ 
-                                health: newHealth,
-                                kbX: kbDir.x * knockbackForce,
-                                kbZ: kbDir.z * knockbackForce,
-                                kbY: upwardPopForce // Pop into air
-                            });
-                        }
-                    });
+                        target.position.x += kbDir.x * knockbackForce;
+                        target.position.z += kbDir.z * knockbackForce;
+                        target.position.y += 0.5;
+
+                        spawnDamagePop(target.position, damage, isCrit);
+
+                        const targetRef = db.ref('players/' + id);
+                        targetRef.once('value', (snapshot) => {
+                            const data = snapshot.val();
+                            if (data && data.health > 0) {
+                                const newHealth = Math.max(0, data.health - damage);
+                                targetRef.update({ 
+                                    health: newHealth,
+                                    kbX: kbDir.x * knockbackForce,
+                                    kbZ: kbDir.z * knockbackForce,
+                                    kbY: upwardPopForce
+                                });
+                            }
+                        });
+                    }
                 }
             }
 
@@ -341,7 +583,7 @@
             }, 250);
         }
 
-        // --- 6. RESPAWN SYSTEM ---
+        // --- 8. RESPAWN SYSTEM ---
         function triggerRespawn() {
             isDead = true;
             player.visible = false;
@@ -361,7 +603,6 @@
                     clearInterval(countdown);
                     respawnScreen.style.display = 'none';
 
-                    // Reset Player State
                     health = 100;
                     isDead = false;
                     velocityY = 0;
@@ -374,185 +615,203 @@
                     document.getElementById('hp-text').innerText = 100;
                     document.getElementById('health-fill').style.width = '100%';
 
-                    playerRef.update({
-                        x: player.position.x,
-                        y: 0,
-                        z: player.position.z,
-                        health: 100,
-                        kbX: 0,
-                        kbZ: 0,
-                        kbY: 0
-                    });
+                    if (activeGameMode === 'ffa' && playerRef) {
+                        playerRef.update({
+                            x: player.position.x,
+                            y: 0,
+                            z: player.position.z,
+                            health: 100,
+                            kbX: 0, kbZ: 0, kbY: 0
+                        });
+                    }
                 }
             }, 1000);
         }
 
-        // --- 7. REALTIME DATABASE NETWORK SYNC ---
-        playersRef.on('child_added', (snapshot) => {
-            const id = snapshot.key;
-            if (id !== myId) {
+        // --- 9. REALTIME DATABASE SYNC (FFA MODE) ---
+        function initFirebaseMultiplayer() {
+            if (playerRef) return; // Already initialized
+
+            playerRef = db.ref('players/' + myId);
+            playersRef = db.ref('players');
+            playerRef.onDisconnect().remove();
+
+            playerRef.set({
+                x: player.position.x,
+                y: 0,
+                z: player.position.z,
+                rotY: 0,
+                health: 100,
+                kbX: 0, kbZ: 0, kbY: 0
+            });
+
+            playersRef.on('child_added', (snapshot) => {
+                const id = snapshot.key;
+                if (id !== myId && activeGameMode === 'ffa') {
+                    const data = snapshot.val();
+                    const remote = createRobloxR6(0xe74c3c, 0x2c3e50);
+                    remote.position.set(data.x, data.y || 0, data.z);
+                    remote.rotation.y = data.rotY;
+                    scene.add(remote);
+                    remotePlayers[id] = remote;
+                }
+            });
+
+            playersRef.on('child_changed', (snapshot) => {
+                const id = snapshot.key;
                 const data = snapshot.val();
-                const remote = createRobloxR6(0xe74c3c, 0x2c3e50);
-                remote.position.set(data.x, data.y || 0, data.z);
-                remote.rotation.y = data.rotY;
-                scene.add(remote);
-                remotePlayers[id] = remote;
-            }
-        });
 
-        playersRef.on('child_changed', (snapshot) => {
-            const id = snapshot.key;
-            const data = snapshot.val();
-
-            if (id === myId) {
-                // Apply impulses from hits
-                if (data.kbX || data.kbZ || data.kbY) {
-                    kbVelX = data.kbX || 0;
-                    kbVelZ = data.kbZ || 0;
-                    
-                    if (data.kbY) {
-                        velocityY = data.kbY; // Launch into air
-                        isGrounded = false;
+                if (id === myId) {
+                    if (data.kbX || data.kbZ || data.kbY) {
+                        kbVelX = data.kbX || 0;
+                        kbVelZ = data.kbZ || 0;
+                        if (data.kbY) {
+                            velocityY = data.kbY;
+                            isGrounded = false;
+                        }
+                        playerRef.update({ kbX: 0, kbZ: 0, kbY: 0 });
                     }
 
-                    playerRef.update({ kbX: 0, kbZ: 0, kbY: 0 });
-                }
+                    if (data.health !== undefined && data.health !== health) {
+                        if (data.health < health) {
+                            const dmgTaken = health - data.health;
+                            spawnDamagePop(player.position, dmgTaken, dmgTaken > 10);
+                        }
+                        health = data.health;
+                        document.getElementById('hp-text').innerText = health;
+                        document.getElementById('health-fill').style.width = health + '%';
 
-                if (data.health !== undefined && data.health !== health) {
-                    if (data.health < health) {
-                        const dmgTaken = health - data.health;
-                        spawnDamagePop(player.position, dmgTaken, dmgTaken > 10);
+                        if (health <= 0 && !isDead) {
+                            addKillFeed(`${myId} was defeated`);
+                            triggerRespawn();
+                        }
+                    }
+                } else if (remotePlayers[id] && activeGameMode === 'ffa') {
+                    if (data.health <= 0 && remotePlayers[id].visible) {
+                        remotePlayers[id].visible = false;
+                    } else if (data.health > 0 && !remotePlayers[id].visible) {
+                        remotePlayers[id].visible = true;
                     }
 
-                    health = data.health;
-                    document.getElementById('hp-text').innerText = health;
-                    document.getElementById('health-fill').style.width = health + '%';
-
-                    if (health <= 0 && !isDead) {
-                        addKillFeed(`${myId} was defeated`);
-                        triggerRespawn();
-                    }
+                    remotePlayers[id].position.set(data.x, data.y || 0, data.z);
+                    remotePlayers[id].rotation.y = data.rotY;
                 }
-            } else if (remotePlayers[id]) {
-                if (data.health <= 0 && remotePlayers[id].visible) {
-                    remotePlayers[id].visible = false;
-                } else if (data.health > 0 && !remotePlayers[id].visible) {
-                    remotePlayers[id].visible = true;
+            });
+
+            playersRef.on('child_removed', (snapshot) => {
+                const id = snapshot.key;
+                if (remotePlayers[id]) {
+                    scene.remove(remotePlayers[id]);
+                    delete remotePlayers[id];
                 }
+            });
+        }
 
-                remotePlayers[id].position.set(data.x, data.y || 0, data.z);
-                remotePlayers[id].rotation.y = data.rotY;
-            }
-        });
-
-        playersRef.on('child_removed', (snapshot) => {
-            const id = snapshot.key;
-            if (remotePlayers[id]) {
-                scene.remove(remotePlayers[id]);
-                delete remotePlayers[id];
-            }
-        });
-
-        // --- 8. MAIN ANIMATION LOOP ---
+        // --- 10. MAIN ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
-            if (!isDead) {
-                // Apply Knockback Friction Impulse
-                player.position.x += kbVelX;
-                player.position.z += kbVelZ;
-                kbVelX *= 0.82;
-                kbVelZ *= 0.82;
+            if (activeGameMode !== 'menu') {
+                if (!isDead) {
+                    // Knockback Friction Physics
+                    player.position.x += kbVelX;
+                    player.position.z += kbVelZ;
+                    kbVelX *= 0.82;
+                    kbVelZ *= 0.82;
 
-                // WASD Input Vector
-                let inputZ = 0, inputX = 0;
-                if (keys['KeyW']) inputZ -= 1;
-                if (keys['KeyS']) inputZ += 1;
-                if (keys['KeyA']) inputX -= 1;
-                if (keys['KeyD']) inputX += 1;
+                    // Movement
+                    let inputZ = 0, inputX = 0;
+                    if (keys['KeyW']) inputZ -= 1;
+                    if (keys['KeyS']) inputZ += 1;
+                    if (keys['KeyA']) inputX -= 1;
+                    if (keys['KeyD']) inputX += 1;
 
-                const isMoving = inputZ !== 0 || inputX !== 0;
+                    const isMoving = inputZ !== 0 || inputX !== 0;
 
-                if (isMoving) {
-                    const moveInput = new THREE.Vector3(inputX, 0, inputZ).normalize();
-                    
-                    const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
-                    const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+                    if (isMoving) {
+                        const moveInput = new THREE.Vector3(inputX, 0, inputZ).normalize();
+                        const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
+                        const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
 
-                    const moveDir = new THREE.Vector3()
-                        .addScaledVector(forward, -moveInput.z)
-                        .addScaledVector(right, moveInput.x)
-                        .normalize();
+                        const moveDir = new THREE.Vector3()
+                            .addScaledVector(forward, -moveInput.z)
+                            .addScaledVector(right, moveInput.x)
+                            .normalize();
 
-                    const speed = 0.28;
-                    player.position.x += moveDir.x * speed;
-                    player.position.z += moveDir.z * speed;
+                        const speed = 0.28;
+                        player.position.x += moveDir.x * speed;
+                        player.position.z += moveDir.z * speed;
 
-                    if (!isShiftLock) {
-                        player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                        if (!isShiftLock) {
+                            player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                        }
+                    }
+
+                    if (isShiftLock) {
+                        player.rotation.y = camYaw;
+                    }
+
+                    // Void & Jump Physics
+                    const isOnBaseplate = Math.abs(player.position.x) <= HALF_BASEPLATE && Math.abs(player.position.z) <= HALF_BASEPLATE;
+
+                    if (keys['Space'] && isGrounded && isOnBaseplate) {
+                        velocityY = 0.32;
+                        isGrounded = false;
+                    }
+
+                    player.position.y += velocityY;
+
+                    if (isOnBaseplate && player.position.y <= 0) {
+                        player.position.y = 0;
+                        velocityY = 0;
+                        isGrounded = true;
+                    } else {
+                        velocityY -= 0.018;
+                        isGrounded = false;
+                    }
+
+                    // Void Death
+                    if (player.position.y < -35 && !isDead) {
+                        health = 0;
+                        document.getElementById('hp-text').innerText = 0;
+                        document.getElementById('health-fill').style.width = '0%';
+                        if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health: 0 });
+                        addKillFeed(`${myId} fell into the void`);
+                        triggerRespawn();
+                    }
+
+                    // Animation Cycle
+                    if (isMoving && isGrounded) {
+                        walkCycleTime += 0.18;
+                        const swing = Math.sin(walkCycleTime) * 0.7;
+                        player.rig.leftArmGroup.rotation.x = swing;
+                        if (!isSwinging) player.rig.rightArmGroup.rotation.x = -swing;
+                        player.rig.leftLegGroup.rotation.x = -swing;
+                        player.rig.rightLegGroup.rotation.x = swing;
+                    } else {
+                        walkCycleTime = 0;
+                        player.rig.leftArmGroup.rotation.x = 0;
+                        if (!isSwinging) player.rig.rightArmGroup.rotation.x = 0;
+                        player.rig.leftLegGroup.rotation.x = 0;
+                        player.rig.rightLegGroup.rotation.x = 0;
+                    }
+
+                    // Sync Position in FFA
+                    if (activeGameMode === 'ffa' && playerRef) {
+                        playerRef.update({
+                            x: player.position.x,
+                            y: player.position.y,
+                            z: player.position.z,
+                            rotY: player.rotation.y
+                        });
                     }
                 }
 
-                if (isShiftLock) {
-                    player.rotation.y = camYaw;
-                }
-
-                // Check Baseplate Boundary Limits (Void Physics)
-                const isOnBaseplate = Math.abs(player.position.x) <= HALF_BASEPLATE && Math.abs(player.position.z) <= HALF_BASEPLATE;
-
-                if (keys['Space'] && isGrounded && isOnBaseplate) {
-                    velocityY = 0.32;
-                    isGrounded = false;
-                }
-
-                player.position.y += velocityY;
-
-                if (isOnBaseplate && player.position.y <= 0) {
-                    player.position.y = 0;
-                    velocityY = 0;
-                    isGrounded = true;
-                } else {
-                    // Gravity applies freely when airborne or off baseplate
-                    velocityY -= 0.018;
-                    isGrounded = false;
-                }
-
-                // Void Death Detection
-                if (player.position.y < -35 && !isDead) {
-                    health = 0;
-                    document.getElementById('hp-text').innerText = 0;
-                    document.getElementById('health-fill').style.width = '0%';
-                    playerRef.update({ health: 0 });
-                    addKillFeed(`${myId} fell into the void`);
-                    triggerRespawn();
-                }
-
-                // Limb Swinging Animation
-                if (isMoving && isGrounded) {
-                    walkCycleTime += 0.18;
-                    const swing = Math.sin(walkCycleTime) * 0.7;
-                    player.rig.leftArmGroup.rotation.x = swing;
-                    if (!isSwinging) player.rig.rightArmGroup.rotation.x = -swing;
-                    player.rig.leftLegGroup.rotation.x = -swing;
-                    player.rig.rightLegGroup.rotation.x = swing;
-                } else {
-                    walkCycleTime = 0;
-                    player.rig.leftArmGroup.rotation.x = 0;
-                    if (!isSwinging) player.rig.rightArmGroup.rotation.x = 0;
-                    player.rig.leftLegGroup.rotation.x = 0;
-                    player.rig.rightLegGroup.rotation.x = 0;
-                }
-
-                // Sync Position to Firebase
-                playerRef.update({
-                    x: player.position.x,
-                    y: player.position.y,
-                    z: player.position.z,
-                    rotY: player.rotation.y
-                });
+                // Update Bot AI if active
+                updateBotAI();
             }
 
-            // Roblox Camera Following
+            // Roblox Camera Orbit Logic
             const targetCenter = player.position.clone().add(new THREE.Vector3(0, 3, 0));
             if (isShiftLock) {
                 const shoulderOffset = new THREE.Vector3(1.2, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
