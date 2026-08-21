@@ -4,22 +4,26 @@
     <meta charset="UTF-8">
     <title>Fight on a Baseplate</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: monospace; }
-        #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.6); padding: 12px; border-radius: 6px; user-select: none; }
-        #health-bar { width: 200px; height: 18px; background: #555; border: 2px solid #fff; margin-top: 5px; }
-        #health-fill { width: 100%; height: 100%; background: #00ff44; transition: width 0.15s; }
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; display: none; font-size: 24px; pointer-events: none; }
+        body { margin: 0; overflow: hidden; font-family: monospace; user-select: none; }
+        #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 6px; pointer-events: none; }
+        #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 3px; }
+        #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
+        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; display: none; font-size: 26px; font-weight: bold; pointer-events: none; }
+        #shiftlock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border: 2px solid cyan; border-radius: 50%; display: none; pointer-events: none; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div>HEALTH: <span id="hp-text">100</span>/100</div>
         <div id="health-bar"><div id="health-fill"></div></div>
-        <div style="margin-top: 8px; font-size: 11px;">[Shift] ShiftLock | [E] Dash | [L-Click] Attack | [WASD] Move</div>
+        <div style="margin-top: 8px; font-size: 11px; opacity: 0.9;">
+            [Shift] Shift Lock | [Right-Click Drag] Orbit | [Scroll] Zoom<br>
+            [WASD] Camera-Relative Move | [E] Dash | [L-Click] Attack
+        </div>
     </div>
-    <div id="crosshair">+</div>
+    <div id="shiftlock-icon"></div>
 
-    <!-- Three.js & Firebase CDN SDKs -->
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -40,86 +44,146 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Session ID for this player instance
         const myId = 'player_' + Math.floor(Math.random() * 1000000);
         const playerRef = db.ref('players/' + myId);
         const playersRef = db.ref('players');
-
-        // Clean up player on tab close
         playerRef.onDisconnect().remove();
 
-        const myData = {
-            x: (Math.random() - 0.5) * 20,
+        const spawnPos = {
+            x: (Math.random() - 0.5) * 30,
             y: 0,
-            z: (Math.random() - 0.5) * 20,
+            z: (Math.random() - 0.5) * 30,
             rotY: 0,
             health: 100
         };
-        playerRef.set(myData);
+        playerRef.set(spawnPos);
 
-        // --- 2. THREE.JS SCENE ---
+        // --- 2. THREE.JS SCENE SETUP ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x68b0d8);
+        scene.background = new THREE.Color(0x7ec0ee);
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(50, 100, 50);
-        scene.add(sun, new THREE.AmbientLight(0x707070));
+        // Lighting
+        const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+        sun.position.set(60, 120, 40);
+        sun.castShadow = true;
+        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0x909090));
 
         // Roblox Baseplate
         const baseplate = new THREE.Mesh(
-            new THREE.BoxGeometry(200, 2, 200),
-            new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.8 })
+            new THREE.BoxGeometry(250, 2, 250),
+            new THREE.MeshStandardMaterial({ color: 0x636363, roughness: 0.7 })
         );
         baseplate.position.y = -1;
+        baseplate.receiveShadow = true;
         scene.add(baseplate);
 
-        const grid = new THREE.GridHelper(200, 40, 0x000000, 0x444444);
+        const grid = new THREE.GridHelper(250, 50, 0x222222, 0x444444);
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Blocky Roblox Character
-        function createAvatar(color) {
-            const group = new THREE.Group();
-            const mat = new THREE.MeshStandardMaterial({ color: color || 0x00a2ff });
-            
-            const torso = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 0.6), mat);
-            torso.position.y = 1.2;
-            group.add(torso);
+        // --- 3. ROBLOX R6 AVATAR BUILDER ---
+        function createRobloxR6(shirtColor = 0x00a2ff, legColor = 0x111111) {
+            const avatar = new THREE.Group();
 
-            const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), new THREE.MeshStandardMaterial({ color: 0xffcc00 }));
-            head.position.y = 2.15;
-            group.add(head);
+            const torsoMat = new THREE.MeshStandardMaterial({ color: shirtColor });
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xf5cd2f }); // Classic Roblox Yellow Head
+            const legMat = new THREE.MeshStandardMaterial({ color: legColor });
+            const armMat = new THREE.MeshStandardMaterial({ color: shirtColor });
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
 
-            const sword = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.2), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 }));
-            sword.position.set(0.8, 1.2, -0.4);
-            sword.rotation.x = Math.PI / 4;
-            group.add(sword);
-            group.sword = sword;
+            // Torso
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), torsoMat);
+            torso.position.y = 3;
+            torso.castShadow = true;
+            avatar.add(torso);
 
-            return group;
+            // Head
+            const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMat);
+            head.position.y = 4.6;
+            head.castShadow = true;
+            avatar.add(head);
+
+            // Left Arm
+            const leftArmGroup = new THREE.Group();
+            leftArmGroup.position.set(-1.5, 4, 0);
+            const leftArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
+            leftArm.position.y = -1;
+            leftArm.castShadow = true;
+            leftArmGroup.add(leftArm);
+            avatar.add(leftArmGroup);
+
+            // Right Arm + Sword
+            const rightArmGroup = new THREE.Group();
+            rightArmGroup.position.set(1.5, 4, 0);
+            const rightArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
+            rightArm.position.y = -1;
+            rightArm.castShadow = true;
+            rightArmGroup.add(rightArm);
+
+            const swordGroup = new THREE.Group();
+            swordGroup.position.set(0, -1.8, -0.2);
+            swordGroup.rotation.x = Math.PI / 3;
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.5, 0.3), steelMat);
+            blade.position.y = -1.2;
+            swordGroup.add(blade);
+            rightArmGroup.add(swordGroup);
+
+            avatar.add(rightArmGroup);
+
+            // Left Leg
+            const leftLegGroup = new THREE.Group();
+            leftLegGroup.position.set(-0.55, 2, 0);
+            const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2, 1), legMat);
+            leftLeg.position.y = -1;
+            leftLeg.castShadow = true;
+            leftLegGroup.add(leftLeg);
+            avatar.add(leftLegGroup);
+
+            // Right Leg
+            const rightLegGroup = new THREE.Group();
+            rightLegGroup.position.set(0.55, 2, 0);
+            const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2, 1), legMat);
+            rightLeg.position.y = -1;
+            rightLeg.castShadow = true;
+            rightLegGroup.add(rightLeg);
+            avatar.add(rightLegGroup);
+
+            // Store references for animation
+            avatar.rig = {
+                leftArmGroup, rightArmGroup, leftLegGroup, rightLegGroup, swordGroup
+            };
+
+            return avatar;
         }
 
-        const player = createAvatar(0x00ffcc);
-        player.position.set(myData.x, myData.y, myData.z);
+        const player = createRobloxR6(0x00a2ff, 0x1b2a4a);
+        player.position.set(spawnPos.x, 0, spawnPos.z);
         scene.add(player);
 
         const remotePlayers = {};
 
-        // --- 3. CONTROLS & COMBAT ---
+        // --- 4. CONTROLS & CAMERA STATE ---
         let isShiftLock = false;
+        let isRightMouseDown = false;
+        let camYaw = 0;
+        let camPitch = -0.25;
+        let camDistance = 12;
+
         let health = 100;
         let canDash = true;
         let isSwinging = false;
+        let walkCycleTime = 0;
         let velocityY = 0;
         let isGrounded = true;
 
         const keys = {};
-        let mouseYaw = 0;
 
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
@@ -128,38 +192,48 @@
         });
         document.addEventListener('keyup', (e) => keys[e.code] = false);
 
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 2) isRightMouseDown = true;
+            if (e.button === 0 && !isSwinging) attack();
+        });
+        document.addEventListener('mouseup', (e) => {
+            if (e.button === 2) isRightMouseDown = false;
+        });
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
         document.addEventListener('mousemove', (e) => {
-            if (isShiftLock && document.pointerLockElement === document.body) {
-                mouseYaw -= e.movementX * 0.003;
+            if (isShiftLock || isRightMouseDown) {
+                camYaw -= e.movementX * 0.0035;
+                camPitch = Math.max(-1.2, Math.min(1.2, camPitch - e.movementY * 0.0035));
             }
         });
 
-        document.addEventListener('mousedown', (e) => {
-            if (e.button === 0 && !isSwinging) attack();
+        document.addEventListener('wheel', (e) => {
+            camDistance = Math.max(4, Math.min(30, camDistance + e.deltaY * 0.012));
         });
 
         function toggleShiftLock() {
             isShiftLock = !isShiftLock;
-            document.getElementById('crosshair').style.display = isShiftLock ? 'block' : 'none';
+            document.getElementById('shiftlock-icon').style.display = isShiftLock ? 'block' : 'none';
             if (isShiftLock) document.body.requestPointerLock();
             else if (document.pointerLockElement) document.exitPointerLock();
         }
 
         function triggerDash() {
             canDash = false;
-            const dashDir = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
-            player.position.addScaledVector(dashDir, 6);
-            setTimeout(() => canDash = true, 1000);
+            const forwardDir = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y);
+            player.position.addScaledVector(forwardDir, 8);
+            setTimeout(() => canDash = true, 800);
         }
 
         function attack() {
             isSwinging = true;
-            const origRot = player.sword.rotation.x;
-            player.sword.rotation.x = -Math.PI / 2;
+            const originalRotX = player.rig.rightArmGroup.rotation.x;
+            player.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
 
             for (let id in remotePlayers) {
                 const target = remotePlayers[id];
-                if (player.position.distanceTo(target.position) < 3.5) {
+                if (player.position.distanceTo(target.position) < 4.2) {
                     const targetRef = db.ref('players/' + id);
                     targetRef.once('value', (snapshot) => {
                         const data = snapshot.val();
@@ -172,18 +246,18 @@
             }
 
             setTimeout(() => {
-                player.sword.rotation.x = origRot;
+                player.rig.rightArmGroup.rotation.x = originalRotX;
                 isSwinging = false;
             }, 250);
         }
 
-        // --- 4. REALTIME DATABASE SYNC ---
+        // --- 5. NETWORK SYNC ---
         playersRef.on('child_added', (snapshot) => {
             const id = snapshot.key;
             if (id !== myId) {
                 const data = snapshot.val();
-                const remote = createAvatar(0xff3333);
-                remote.position.set(data.x, data.y, data.z);
+                const remote = createRobloxR6(0xe74c3c, 0x2c3e50);
+                remote.position.set(data.x, data.y || 0, data.z);
                 remote.rotation.y = data.rotY;
                 scene.add(remote);
                 remotePlayers[id] = remote;
@@ -202,19 +276,14 @@
 
                     if (health <= 0) {
                         health = 100;
-                        player.position.set((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20);
+                        player.position.set((Math.random() - 0.5) * 30, 0, (Math.random() - 0.5) * 30);
                         document.getElementById('hp-text').innerText = 100;
                         document.getElementById('health-fill').style.width = '100%';
-                        playerRef.update({
-                            x: player.position.x,
-                            y: player.position.y,
-                            z: player.position.z,
-                            health: 100
-                        });
+                        playerRef.update({ x: player.position.x, y: 0, z: player.position.z, health: 100 });
                     }
                 }
             } else if (remotePlayers[id]) {
-                remotePlayers[id].position.set(data.x, data.y, data.z);
+                remotePlayers[id].position.set(data.x, data.y || 0, data.z);
                 remotePlayers[id].rotation.y = data.rotY;
             }
         });
@@ -227,51 +296,93 @@
             }
         });
 
-        // --- 5. GAME LOOP ---
+        // --- 6. MAIN GAME LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
-            const speed = 0.2;
-            let moveDir = new THREE.Vector3();
+            // Input Vector
+            let inputZ = 0, inputX = 0;
+            if (keys['KeyW']) inputZ -= 1;
+            if (keys['KeyS']) inputZ += 1;
+            if (keys['KeyA']) inputX -= 1;
+            if (keys['KeyD']) inputX += 1;
 
-            if (keys['KeyW']) moveDir.z -= 1;
-            if (keys['KeyS']) moveDir.z += 1;
-            if (keys['KeyA']) moveDir.x -= 1;
-            if (keys['KeyD']) moveDir.x += 1;
+            const isMoving = inputZ !== 0 || inputX !== 0;
 
-            moveDir.normalize();
+            if (isMoving) {
+                const moveInput = new THREE.Vector3(inputX, 0, inputZ).normalize();
+                
+                // Roblox Camera-Relative Movement Direction
+                const forward = new THREE.Vector3(-Math.sin(camYaw), 0, -Math.cos(camYaw));
+                const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
 
-            if (isShiftLock) {
-                player.rotation.y = mouseYaw;
-                moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), mouseYaw);
-            } else if (moveDir.length() > 0) {
-                player.rotation.y = Math.atan2(-moveDir.x, -moveDir.z);
+                const moveDir = new THREE.Vector3()
+                    .addScaledVector(forward, -moveInput.z)
+                    .addScaledVector(right, moveInput.x)
+                    .normalize();
+
+                const speed = 0.28;
+                player.position.x += moveDir.x * speed;
+                player.position.z += moveDir.z * speed;
+
+                if (!isShiftLock) {
+                    // Turn avatar towards movement direction
+                    player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                }
             }
 
-            player.position.x += moveDir.x * speed;
-            player.position.z += moveDir.z * speed;
+            if (isShiftLock) {
+                // Shift Lock forces character to face camera direction continuously
+                player.rotation.y = camYaw;
+            }
 
-            // Jump / Gravity
+            // Jump & Gravity
             if (keys['Space'] && isGrounded) {
-                velocityY = 0.25;
+                velocityY = 0.32;
                 isGrounded = false;
             }
             player.position.y += velocityY;
             if (player.position.y > 0) {
-                velocityY -= 0.015;
+                velocityY -= 0.018;
             } else {
                 player.position.y = 0;
                 velocityY = 0;
                 isGrounded = true;
             }
 
-            // Camera Tracking
-            const camOffset = new THREE.Vector3(isShiftLock ? 1.5 : 0, 4, 8);
-            camOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), isShiftLock ? mouseYaw : player.rotation.y);
-            camera.position.copy(player.position).add(camOffset);
-            camera.lookAt(player.position.clone().add(new THREE.Vector3(0, 1.5, 0)));
+            // Roblox Limb Swinging Walk Animation
+            if (isMoving && isGrounded) {
+                walkCycleTime += 0.18;
+                const swing = Math.sin(walkCycleTime) * 0.7;
+                player.rig.leftArmGroup.rotation.x = swing;
+                if (!isSwinging) player.rig.rightArmGroup.rotation.x = -swing;
+                player.rig.leftLegGroup.rotation.x = -swing;
+                player.rig.rightLegGroup.rotation.x = swing;
+            } else {
+                walkCycleTime = 0;
+                player.rig.leftArmGroup.rotation.x = 0;
+                if (!isSwinging) player.rig.rightArmGroup.rotation.x = 0;
+                player.rig.leftLegGroup.rotation.x = 0;
+                player.rig.rightLegGroup.rotation.x = 0;
+            }
 
-            // Broadcast transform
+            // Roblox Orbit & Shift Lock Camera System
+            const targetCenter = player.position.clone().add(new THREE.Vector3(0, 3, 0));
+            
+            // Shift lock shoulder offset (+1.2 right)
+            if (isShiftLock) {
+                const shoulderOffset = new THREE.Vector3(1.2, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
+                targetCenter.add(shoulderOffset);
+            }
+
+            const camX = targetCenter.x + camDistance * Math.sin(camYaw) * Math.cos(camPitch);
+            const camY = targetCenter.y + camDistance * -Math.sin(camPitch);
+            const camZ = targetCenter.z + camDistance * Math.cos(camYaw) * Math.cos(camPitch);
+
+            camera.position.set(camX, Math.max(0.5, camY), camZ);
+            camera.lookAt(targetCenter);
+
+            // Sync position to Firebase
             playerRef.update({
                 x: player.position.x,
                 y: player.position.y,
@@ -283,6 +394,12 @@
         }
 
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
