@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baseplate Brawler 3D</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+    
+    #ui {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      color: white;
+      background: rgba(0, 0, 0, 0.65);
+      padding: 16px 20px;
+      border-radius: 12px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      pointer-events: none;
+    }
+
+    #ui h1 { margin: 0 0 6px 0; font-size: 1.4rem; color: #38bdf8; text-transform: uppercase; letter-spacing: 1px; }
+    #ui p { margin: 4px 0; font-size: 0.9rem; color: #cbd5e1; }
+    .key { background: #475569; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+  </style>
+  <!-- Three.js 3D Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="ui">
+    <h1>Baseplate Brawler</h1>
+    <p><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> : Move Character</p>
+    <p><span class="key">SPACE</span> : Jump</p>
+    <p><span class="key">LEFT CLICK</span> : Attack with Sword</p>
+  </div>
+
+  <script>
+    // 1. SCENE & RENDERER SETUP
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // Roblox Sky Blue
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // 2. LIGHTING
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+    sun.position.set(30, 50, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    scene.add(sun);
+
+    // 3. THE CLASSIC ROBLOX BASEPLATE
+    const plateGeo = new THREE.BoxGeometry(80, 2, 80);
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8 });
+    const baseplate = new THREE.Mesh(plateGeo, plateMat);
+    baseplate.position.y = -1;
+    baseplate.receiveShadow = true;
+    scene.add(baseplate);
+
+    // Stud Grid Overlay
+    const grid = new THREE.GridHelper(80, 40, 0x444444, 0x555555);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // 4. ROBLOX AVATAR (Blocky Character)
+    const player = new THREE.Group();
+
+    // Torso (Blue)
+    const torso = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, 1.4, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x0055ff })
+    );
+    torso.position.y = 1.7;
+    torso.castShadow = true;
+    player.add(torso);
+
+    // Head (Yellow)
+    const head = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.8, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0xffcc00 })
+    );
+    head.position.y = 2.8;
+    head.castShadow = true;
+    player.add(head);
+
+    // Legs (Green)
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x00aa22 });
+    const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.55, 1.2, 0.55), legMat);
+    leftLeg.position.set(-0.32, 0.6, 0);
+    leftLeg.castShadow = true;
+
+    const rightLeg = leftLeg.clone();
+    rightLeg.position.x = 0.32;
+
+    player.add(leftLeg, rightLeg);
+
+    // Arms (Yellow)
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
+    const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.5), armMat);
+    leftArm.position.set(-0.9, 1.6, 0);
+    leftArm.castShadow = true;
+
+    const rightArm = leftArm.clone();
+    rightArm.position.x = 0.9;
+    player.add(leftArm, rightArm);
+
+    // CLASSIC SWORD
+    const sword = new THREE.Group();
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 1.8, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.8, roughness: 0.2 })
+    );
+    blade.position.y = 0.9;
+    
+    const hilt = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.1, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0xf59e0b })
+    );
+
+    sword.add(blade, hilt);
+    sword.position.set(0.9, 1.2, 0.3);
+    sword.rotation.x = Math.PI / 4;
+    player.add(sword);
+
+    scene.add(player);
+
+    // 5. CONTROLS & PHYSICS ENGINE
+    const keys = {};
+    let velocityY = 0;
+    let isGrounded = true;
+    const speed = 0.16;
+    let isAttacking = false;
+    let attackProgress = 0;
+
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    window.addEventListener('mousedown', () => {
+      if (!isAttacking) {
+        isAttacking = true;
+        attackProgress = 0;
+      }
+    });
+
+    // 6. GAME LOOP
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // WASD Movement
+      const move = new THREE.Vector3();
+      if (keys['KeyW']) move.z -= 1;
+      if (keys['KeyS']) move.z += 1;
+      if (keys['KeyA']) move.x -= 1;
+      if (keys['KeyD']) move.x += 1;
+
+      if (move.length() > 0) {
+        move.normalize();
+        player.position.x += move.x * speed;
+        player.position.z += move.z * speed;
+        player.rotation.y = Math.atan2(move.x, move.z);
+      }
+
+      // Jump & Gravity
+      if (keys['Space'] && isGrounded) {
+        velocityY = 0.24;
+        isGrounded = false;
+      }
+
+      player.position.y += velocityY;
+
+      if (player.position.y > 0) {
+        velocityY -= 0.012; // Gravity
+      } else {
+        player.position.y = 0;
+        velocityY = 0;
+        isGrounded = true;
+      }
+
+      // Sword Slash Animation
+      if (isAttacking) {
+        attackProgress += 0.2;
+        sword.rotation.x = Math.sin(attackProgress) * 1.8;
+        sword.rotation.z = -Math.sin(attackProgress) * 0.8;
+
+        if (attackProgress >= Math.PI) {
+          isAttacking = false;
+          sword.rotation.x = Math.PI / 4;
+          sword.rotation.z = 0;
+        }
+      }
+
+      // 3rd Person Follow Camera
+      camera.position.x = player.position.x;
+      camera.position.y = player.position.y + 7;
+      camera.position.z = player.position.z + 12;
+      camera.lookAt(player.position.x, player.position.y + 1.8, player.position.z);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
