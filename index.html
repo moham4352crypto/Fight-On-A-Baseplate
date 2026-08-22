@@ -27,7 +27,7 @@
         .btn-hard { background: linear-gradient(135deg, #eb3349, #f45c43); }
         .menu-btn:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.15); }
 
-        /* In-Game UI HUD */
+        /* HUD */
         #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 8px; pointer-events: none; z-index: 10; font-family: monospace; display: none; }
         #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
         #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
@@ -153,7 +153,73 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        // --- 1. FIREBASE CONFIG ---
+        // --- 1. MINECRAFT AUDIO SYNTHESIZER ---
+        let audioCtx = null;
+
+        function playMinecraftSound(type = 'hit') {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'block') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(340, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(now + 0.1);
+                return;
+            }
+
+            const isCrit = (type === 'crit');
+            const bufferSize = audioCtx.sampleRate * 0.08;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(isCrit ? 1400 : 900, now);
+            filter.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(isCrit ? 0.6 : 0.45, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+            noise.start();
+
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(isCrit ? 220 : 160, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
+            oscGain.gain.setValueAtTime(0.5, now);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.connect(oscGain);
+            oscGain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(now + 0.08);
+        }
+
+        // --- 2. FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyD_SvBpe0aTMzq_sFvbmS9VkrbwXRMr560",
             authDomain: "fight-on-a-baseplate.firebaseapp.com",
@@ -178,7 +244,7 @@
 
         let activeGameMode = 'menu';
 
-        // --- 2. THREE.JS SCENE SETUP ---
+        // --- 3. THREE.JS SCENE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x7ec0ee);
 
@@ -205,7 +271,7 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Character Rig Builder
+        // Character Builder
         function createRobloxR6(shirtColor = 0x00a2ff, legColor = 0x111111) {
             const avatar = new THREE.Group();
 
@@ -300,8 +366,8 @@
         const remotePlayers = {};
         let activeBot = null;
 
-        // --- 3. GAMEPLAY & ITEM VARS ---
-        let selectedSlot = 1; // 1: Sword, 2: Axe, 3: Golden Apple
+        // --- 4. GAMEPLAY & ITEM VARS ---
+        let selectedSlot = 1;
         let gappleCount = 5;
         let lastGappleTime = 0;
         let eatHoldTimer = 0;
@@ -321,7 +387,10 @@
         let health = 100;
         let isDead = false;
         let canDash = true;
+        
         let isSwinging = false;
+        let swingProgress = 0;
+
         let walkCycleTime = 0;
         let velocityY = 0;
         let isGrounded = true;
@@ -394,14 +463,13 @@
             setTimeout(() => canDash = true, 800);
         }
 
-        // --- 4. ITEM & SHIELD LOGIC ---
+        // --- 5. ITEM & SHIELD LOGIC ---
         function selectSlot(slot) {
             selectedSlot = slot;
             for (let i = 1; i <= 3; i++) {
                 document.getElementById(`slot-${i}`).classList.toggle('active', i === slot);
             }
 
-            // Visual weapon visibility
             player.rig.swordGroup.visible = (slot === 1);
             player.rig.axeGroup.visible = (slot === 2);
             player.rig.gappleMesh.visible = (slot === 3);
@@ -444,7 +512,6 @@
             document.getElementById('eat-bar-fill').style.width = Math.min(100, (eatHoldTimer / 1.2) * 100) + '%';
 
             if (eatHoldTimer >= 1.2) {
-                // Eat Apple
                 gappleCount--;
                 lastGappleTime = now;
                 health = Math.min(100, health + 20);
@@ -463,7 +530,7 @@
             }
         }
 
-        // --- 5. GAME START & BOT SETUP ---
+        // --- 6. GAME START & BOT SETUP ---
         function startGame(mode) {
             activeGameMode = mode;
             document.getElementById('main-menu').style.display = 'none';
@@ -472,7 +539,6 @@
             document.getElementById('status-overlay').style.display = 'flex';
             document.getElementById('menu-return-btn').style.display = 'block';
 
-            // Reset local player state
             health = 100;
             gappleCount = 5;
             shieldBrokenUntil = 0;
@@ -513,7 +579,7 @@
             }
         }
 
-        // --- 6. BOT AI SYSTEM ---
+        // --- 7. BOT AI SYSTEM ---
         function spawnBot(difficultyMode) {
             const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
             botMesh.position.set(0, 0, -12);
@@ -598,10 +664,10 @@
                 const isCrit = !bot.isGrounded;
                 let botDmg = isCrit ? 15 : 10;
 
-                // Shield Damage Reduction / Shield Break
                 if (isShielding) {
-                    botDmg = Math.floor(botDmg * 0.2); // 80% blocked
+                    botDmg = Math.floor(botDmg * 0.2);
                     spawnPopText(player.position, 'BLOCKED', 'block');
+                    playMinecraftSound('block');
                 } else {
                     const kbDir = player.position.clone().sub(bot.mesh.position).normalize();
                     kbVelX = kbDir.x * 1.5;
@@ -609,6 +675,7 @@
                     velocityY = 0.28;
                     isGrounded = false;
                     spawnPopText(player.position, botDmg, isCrit ? 'crit' : 'normal');
+                    playMinecraftSound(isCrit ? 'crit' : 'hit');
                 }
 
                 health = Math.max(0, health - botDmg);
@@ -627,14 +694,12 @@
             }
         }
 
-        // --- 7. COMBAT SYSTEM & DAMAGE ---
+        // --- 8. COMBAT SYSTEM & MINECRAFT SWORD SWING ---
         function attack() {
-            if (selectedSlot === 3) return; // Cannot attack with apple
+            if (selectedSlot === 3 || isSwinging) return;
 
             isSwinging = true;
-            const activeArm = player.rig.rightArmGroup;
-            const originalRotX = activeArm.rotation.x;
-            activeArm.rotation.x = -Math.PI / 1.5;
+            swingProgress = 0;
 
             const isCrit = !isGrounded;
             let damage = (selectedSlot === 2) ? (isCrit ? 20 : 14) : (isCrit ? 15 : 10);
@@ -651,7 +716,9 @@
                     activeBot.velocityY = 0.30;
                     activeBot.isGrounded = false;
 
+                    // Show damage pop above bot for attacker
                     spawnPopText(activeBot.mesh.position, damage, isCrit ? 'crit' : 'normal');
+                    playMinecraftSound(isCrit ? 'crit' : 'hit');
 
                     if (activeBot.health <= 0) {
                         activeBot.isDead = true;
@@ -679,6 +746,9 @@
                         const kbDir = target.position.clone().sub(player.position).normalize();
                         const isAxeHit = (selectedSlot === 2);
 
+                        // SHOW DAMAGE POP TEXT DIRECTLY ON ATTACKER'S SCREEN
+                        spawnPopText(target.position, damage, isCrit ? 'crit' : 'normal');
+
                         const targetRef = db.ref('players/' + id);
                         targetRef.once('value', (snapshot) => {
                             const data = snapshot.val();
@@ -692,17 +762,13 @@
                                 });
                             }
                         });
+                        playMinecraftSound(isCrit ? 'crit' : 'hit');
                     }
                 }
             }
-
-            setTimeout(() => {
-                activeArm.rotation.x = originalRotX;
-                isSwinging = false;
-            }, 250);
         }
 
-        // --- 8. RESPAWN SYSTEM ---
+        // --- 9. RESPAWN SYSTEM ---
         function triggerRespawn() {
             isDead = true;
             player.visible = false;
@@ -745,7 +811,7 @@
             }, 1000);
         }
 
-        // --- 9. REALTIME DATABASE SYNC (FFA FIX) ---
+        // --- 10. REALTIME DATABASE SYNC ---
         function initFirebaseMultiplayer() {
             if (!playerRef) {
                 playerRef = db.ref('players/' + myId);
@@ -778,22 +844,23 @@
                     const data = snapshot.val();
 
                     if (id === myId) {
-                        // Receiving a hit from online player
                         if (data.hitByDmg) {
                             let dmg = data.hitByDmg;
                             let wasShielded = isShielding;
 
                             if (data.hitByAxe && wasShielded) {
-                                // Axe breaks shield
                                 shieldBrokenUntil = Date.now() + 5000;
                                 isShielding = false;
                                 player.rig.shieldMesh.visible = false;
                                 spawnPopText(player.position, 'GUARD BROKEN!', 'crit');
+                                playMinecraftSound('crit');
                             } else if (wasShielded) {
                                 dmg = Math.floor(dmg * 0.2);
                                 spawnPopText(player.position, 'BLOCKED', 'block');
+                                playMinecraftSound('block');
                             } else {
                                 spawnPopText(player.position, dmg, dmg > 10 ? 'crit' : 'normal');
+                                playMinecraftSound(dmg > 10 ? 'crit' : 'hit');
                             }
 
                             if (!wasShielded) {
@@ -831,7 +898,7 @@
             }
         }
 
-        // Floating Damage Numbers
+        // Floating Damage Numbers (screen-projected 3D position)
         function spawnPopText(position3D, text, type = 'normal') {
             const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
             vec.project(camera);
@@ -858,7 +925,7 @@
             setTimeout(() => msg.remove(), 4500);
         }
 
-        // --- 10. MAIN ANIMATION LOOP ---
+        // --- 11. MAIN ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -925,6 +992,21 @@
                         triggerRespawn();
                     }
 
+                    // Minecraft Sword Attack Motion Loop
+                    if (isSwinging) {
+                        swingProgress += 0.07;
+                        if (swingProgress >= 1) {
+                            isSwinging = false;
+                            swingProgress = 0;
+                            player.rig.rightArmGroup.rotation.set(0, 0, 0);
+                        } else {
+                            const arc = Math.sin(swingProgress * Math.PI);
+                            player.rig.rightArmGroup.rotation.x = -arc * 1.7; // Chop downward
+                            player.rig.rightArmGroup.rotation.y = -arc * 0.9; // Slash across chest
+                            player.rig.rightArmGroup.rotation.z = arc * 0.5;  // Tilt angle
+                        }
+                    }
+
                     if (isMoving && isGrounded) {
                         walkCycleTime += 0.18;
                         const swing = Math.sin(walkCycleTime) * 0.7;
@@ -932,10 +1014,10 @@
                         if (!isSwinging) player.rig.rightArmGroup.rotation.x = -swing;
                         player.rig.leftLegGroup.rotation.x = -swing;
                         player.rig.rightLegGroup.rotation.x = swing;
-                    } else {
+                    } else if (!isSwinging) {
                         walkCycleTime = 0;
                         player.rig.leftArmGroup.rotation.x = isShielding ? -Math.PI / 4 : 0;
-                        if (!isSwinging) player.rig.rightArmGroup.rotation.x = 0;
+                        player.rig.rightArmGroup.rotation.x = 0;
                         player.rig.leftLegGroup.rotation.x = 0;
                         player.rig.rightLegGroup.rotation.x = 0;
                     }
