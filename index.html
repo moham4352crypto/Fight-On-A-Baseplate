@@ -6,7 +6,6 @@
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; background: #111; }
         
-        /* Main Start Menu */
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(12, 16, 24, 0.88); backdrop-filter: blur(8px);
@@ -27,15 +26,14 @@
         .btn-hard { background: linear-gradient(135deg, #eb3349, #f45c43); }
         .menu-btn:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.15); }
 
-        /* HUD */
         #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 8px; pointer-events: none; z-index: 10; font-family: monospace; display: none; }
-        #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
+        #health-bar-container { position: relative; width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
         #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
+        #absorption-fill { position: absolute; top: 0; left: 0; width: 0%; height: 100%; background: #ffcc00; opacity: 0.85; transition: width 0.15s; }
         
         #menu-return-btn { position: absolute; top: 15px; left: 280px; z-index: 10; padding: 8px 14px; background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 6px; cursor: pointer; display: none; font-weight: bold; }
         #menu-return-btn:hover { background: rgba(255,255,255,0.4); }
 
-        /* Minecraft Hotbar */
         #hotbar {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             display: none; gap: 8px; background: rgba(0,0,0,0.75); padding: 8px;
@@ -52,7 +50,6 @@
         .hotbar-icon { font-size: 22px; margin-top: 4px; }
         .hotbar-count { position: absolute; bottom: 3px; right: 5px; font-weight: bold; color: #ffcc00; }
 
-        /* Shield & Eating Status Overlay */
         #status-overlay {
             position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
             display: none; flex-direction: column; align-items: center; gap: 6px; z-index: 10; pointer-events: none;
@@ -61,19 +58,17 @@
         #eat-bar-fill { width: 0%; height: 100%; background: #ffcc00; }
         #shield-text { font-family: monospace; font-weight: bold; font-size: 16px; text-shadow: 0 0 6px #000; }
 
-        /* Kill Feed */
         #killfeed { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 10; font-family: monospace; }
         .kill-msg { background: rgba(0,0,0,0.75); color: #ff4444; padding: 6px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; border-right: 3px solid #ff4444; animation: fadeOut 4.5s forwards; }
 
-        /* Respawn Overlay */
         #respawn-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; font-family: monospace; }
         #respawn-screen h1 { font-size: 42px; margin: 0; color: #ff3333; }
 
-        /* Damage Numbers */
         .damage-pop { position: absolute; font-weight: 900; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; font-family: monospace; }
         .damage-pop.normal { color: #ffcc00; font-size: 26px; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
         .damage-pop.crit { color: #ff2200; font-size: 34px; text-shadow: 0 0 10px rgba(255, 34, 0, 0.8), 2px 2px 0 #000, -2px -2px 0 #000; }
         .damage-pop.heal { color: #00ff66; font-size: 30px; text-shadow: 0 0 10px rgba(0,255,102,0.8), 2px 2px 0 #000; }
+        .damage-pop.golden { color: #ffcc00; font-size: 28px; text-shadow: 0 0 10px rgba(255, 204, 0, 0.8), 2px 2px 0 #000; }
         .damage-pop.block { color: #00c6ff; font-size: 24px; text-shadow: 2px 2px 0 #000; }
 
         #shiftlock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border: 2px solid cyan; border-radius: 50%; display: none; pointer-events: none; z-index: 5; }
@@ -88,7 +83,6 @@
 </head>
 <body>
 
-    <!-- MAIN MENU -->
     <div id="main-menu">
         <h1>FIGHT ON A BASEPLATE</h1>
         <p>Select a Game Mode to Play</p>
@@ -100,10 +94,12 @@
         </div>
     </div>
 
-    <!-- HUD -->
     <div id="ui">
         <div>HEALTH: <span id="hp-text">100</span>/100</div>
-        <div id="health-bar"><div id="health-fill"></div></div>
+        <div id="health-bar-container">
+            <div id="health-fill"></div>
+            <div id="absorption-fill"></div>
+        </div>
         <div style="margin-top: 8px; font-size: 11px; opacity: 0.9;">
             [1-3] Select Item | [Right-Hold] Shield<br>
             [L-Click] Attack / Hold to Eat Gapple<br>
@@ -113,7 +109,6 @@
 
     <button id="menu-return-btn" onclick="returnToMenu()">⚙️ Main Menu</button>
     
-    <!-- HOTBAR -->
     <div id="hotbar">
         <div class="hotbar-slot active" id="slot-1" onclick="selectSlot(1)">
             <span class="hotbar-key">1</span>
@@ -133,7 +128,6 @@
         </div>
     </div>
 
-    <!-- STATUS OVERLAY -->
     <div id="status-overlay">
         <div id="shield-text"></div>
         <div id="eat-bar-container"><div id="eat-bar-fill"></div></div>
@@ -147,23 +141,16 @@
         <p>Respawning in <span id="respawn-timer">3</span>...</p>
     </div>
 
-    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
-        // --- 1. MINECRAFT AUDIO SYNTHESIZER ---
         let audioCtx = null;
 
         function playMinecraftSound(type = 'hit') {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = audioCtx.currentTime;
 
             if (type === 'block') {
@@ -185,9 +172,7 @@
             const bufferSize = audioCtx.sampleRate * 0.08;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
 
             const noise = audioCtx.createBufferSource();
             noise.buffer = buffer;
@@ -219,7 +204,6 @@
             osc.stop(now + 0.08);
         }
 
-        // --- 2. FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyD_SvBpe0aTMzq_sFvbmS9VkrbwXRMr560",
             authDomain: "fight-on-a-baseplate.firebaseapp.com",
@@ -241,10 +225,8 @@
 
         const BASEPLATE_SIZE = 250;
         const HALF_BASEPLATE = BASEPLATE_SIZE / 2;
-
         let activeGameMode = 'menu';
 
-        // --- 3. THREE.JS SCENE SETUP ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x7ec0ee);
 
@@ -271,10 +253,8 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Character Builder
         function createRobloxR6(shirtColor = 0x00a2ff, legColor = 0x111111) {
             const avatar = new THREE.Group();
-
             const torsoMat = new THREE.MeshStandardMaterial({ color: shirtColor });
             const headMat = new THREE.MeshStandardMaterial({ color: 0xf5cd2f });
             const legMat = new THREE.MeshStandardMaterial({ color: legColor });
@@ -290,7 +270,6 @@
             head.position.y = 4.6;
             avatar.add(head);
 
-            // Left Arm & Shield
             const leftArmGroup = new THREE.Group();
             leftArmGroup.position.set(-1.5, 4, 0);
             const leftArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
@@ -301,17 +280,14 @@
             shieldMesh.position.set(0, -1, -0.6);
             shieldMesh.visible = false;
             leftArmGroup.add(shieldMesh);
-
             avatar.add(leftArmGroup);
 
-            // Right Arm & Weapons
             const rightArmGroup = new THREE.Group();
             rightArmGroup.position.set(1.5, 4, 0);
             const rightArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
             rightArm.position.y = -1;
             rightArmGroup.add(rightArm);
 
-            // Sword
             const swordGroup = new THREE.Group();
             swordGroup.position.set(0, -1.8, -0.2);
             swordGroup.rotation.x = Math.PI / 3;
@@ -320,7 +296,6 @@
             swordGroup.add(blade);
             rightArmGroup.add(swordGroup);
 
-            // Axe
             const axeGroup = new THREE.Group();
             axeGroup.position.set(0, -1.8, -0.2);
             axeGroup.rotation.x = Math.PI / 3;
@@ -332,15 +307,12 @@
             axeGroup.visible = false;
             rightArmGroup.add(axeGroup);
 
-            // Golden Apple
             const gappleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), goldMat);
             gappleMesh.position.set(0, -1.8, -0.2);
             gappleMesh.visible = false;
             rightArmGroup.add(gappleMesh);
-
             avatar.add(rightArmGroup);
 
-            // Legs
             const leftLegGroup = new THREE.Group();
             leftLegGroup.position.set(-0.55, 2, 0);
             const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2, 1), legMat);
@@ -366,12 +338,14 @@
         const remotePlayers = {};
         let activeBot = null;
 
-        // --- 4. GAMEPLAY & ITEM VARS ---
         let selectedSlot = 1;
         let gappleCount = 5;
         let lastGappleTime = 0;
         let eatHoldTimer = 0;
         let isEating = false;
+
+        let regenTimer = null;
+        let absorptionHealth = 0;
 
         let isShielding = false;
         let shieldBrokenUntil = 0;
@@ -398,7 +372,20 @@
         let kbVelX = 0, kbVelZ = 0;
         const keys = {};
 
-        // Key Listeners
+        // Helper function to check if attack came from defender's 180° front arc
+        function isAttackerInFront(defenderPos, defenderRotY, attackerPos) {
+            const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), defenderRotY);
+            const dirToAttacker = attackerPos.clone().sub(defenderPos).setY(0).normalize();
+            return forward.dot(dirToAttacker) > 0;
+        }
+
+        // AUTO-REFILL GOLDEN APPLES TO 5 UPON KILL
+        function refillGoldenApplesOnKill() {
+            gappleCount = 5;
+            document.getElementById('gapple-count').innerText = 5;
+            spawnPopText(player.position, '+5 GAPPLES REFILLED!', 'golden');
+        }
+
         document.addEventListener('keydown', (e) => {
             if (isDead || activeGameMode === 'menu') return;
             keys[e.code] = true;
@@ -463,7 +450,36 @@
             setTimeout(() => canDash = true, 800);
         }
 
-        // --- 5. ITEM & SHIELD LOGIC ---
+        function updateHealthUI() {
+            const hpText = document.getElementById('hp-text');
+            const hpFill = document.getElementById('health-fill');
+            const absFill = document.getElementById('absorption-fill');
+
+            if (absorptionHealth > 0) {
+                hpText.innerHTML = `${health} <span style="color:#ffcc00">(+${absorptionHealth})</span>`;
+            } else {
+                hpText.innerText = health;
+            }
+
+            hpFill.style.width = health + '%';
+            absFill.style.width = (absorptionHealth * 10) + '%';
+        }
+
+        function applyDamageToPlayer(rawDmg) {
+            let dmg = rawDmg;
+            if (absorptionHealth > 0) {
+                if (absorptionHealth >= dmg) {
+                    absorptionHealth -= dmg;
+                    dmg = 0;
+                } else {
+                    dmg -= absorptionHealth;
+                    absorptionHealth = 0;
+                }
+            }
+            health = Math.max(0, health - dmg);
+            updateHealthUI();
+        }
+
         function selectSlot(slot) {
             selectedSlot = slot;
             for (let i = 1; i <= 3; i++) {
@@ -473,7 +489,6 @@
             player.rig.swordGroup.visible = (slot === 1);
             player.rig.axeGroup.visible = (slot === 2);
             player.rig.gappleMesh.visible = (slot === 3);
-
             checkShieldState();
         }
 
@@ -496,6 +511,31 @@
             }
         }
 
+        function startGappleRegen() {
+            if (regenTimer) clearInterval(regenTimer);
+
+            regenTimer = setInterval(() => {
+                if (isDead || activeGameMode === 'menu') {
+                    clearInterval(regenTimer);
+                    regenTimer = null;
+                    return;
+                }
+
+                if (health < 100) {
+                    health = Math.min(100, health + 5);
+                    spawnPopText(player.position, '+5 HP', 'heal');
+                    updateHealthUI();
+
+                    if (activeGameMode === 'ffa' && playerRef) {
+                        playerRef.update({ health, absorptionHealth });
+                    }
+                } else {
+                    clearInterval(regenTimer);
+                    regenTimer = null;
+                }
+            }, 2500);
+        }
+
         function handleGoldenAppleEating() {
             if (selectedSlot !== 3 || !isLeftMouseDown || gappleCount <= 0 || isDead) return;
 
@@ -514,23 +554,25 @@
             if (eatHoldTimer >= 1.2) {
                 gappleCount--;
                 lastGappleTime = now;
+
                 health = Math.min(100, health + 20);
-                
-                document.getElementById('hp-text').innerText = health;
-                document.getElementById('health-fill').style.width = health + '%';
+                absorptionHealth = 10;
+
+                updateHealthUI();
                 document.getElementById('gapple-count').innerText = gappleCount;
 
                 spawnPopText(player.position, '+20 HP', 'heal');
+                setTimeout(() => spawnPopText(player.position, '+10 GOLDEN HP', 'golden'), 250);
 
                 eatHoldTimer = 0;
                 isEating = false;
                 document.getElementById('eat-bar-container').style.display = 'none';
 
-                if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health });
+                startGappleRegen();
+                if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health, absorptionHealth });
             }
         }
 
-        // --- 6. GAME START & BOT SETUP ---
         function startGame(mode) {
             activeGameMode = mode;
             document.getElementById('main-menu').style.display = 'none';
@@ -540,16 +582,18 @@
             document.getElementById('menu-return-btn').style.display = 'block';
 
             health = 100;
+            absorptionHealth = 0;
             gappleCount = 5;
             shieldBrokenUntil = 0;
             isDead = false;
             player.visible = true;
             player.position.set(0, 0, 0);
 
-            document.getElementById('hp-text').innerText = 100;
-            document.getElementById('health-fill').style.width = '100%';
-            document.getElementById('gapple-count').innerText = 5;
+            if (regenTimer) clearInterval(regenTimer);
+            regenTimer = null;
 
+            updateHealthUI();
+            document.getElementById('gapple-count').innerText = 5;
             selectSlot(1);
 
             if (activeBot) {
@@ -573,13 +617,15 @@
             document.getElementById('menu-return-btn').style.display = 'none';
             if (document.pointerLockElement) document.exitPointerLock();
 
+            if (regenTimer) clearInterval(regenTimer);
+            regenTimer = null;
+
             if (activeBot) {
                 scene.remove(activeBot.mesh);
                 activeBot = null;
             }
         }
 
-        // --- 7. BOT AI SYSTEM ---
         function spawnBot(difficultyMode) {
             const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
             botMesh.position.set(0, 0, -12);
@@ -592,6 +638,14 @@
             activeBot = {
                 mesh: botMesh,
                 health: 100,
+                absorptionHealth: 0,
+                gappleCount: 5,
+                selectedSlot: 1, // 1: Sword, 2: Axe, 3: Gapple
+                isShielding: false,
+                shieldBrokenUntil: 0,
+                isEating: false,
+                eatTimer: 0,
+                lastGappleTime: 0,
                 speed: speed,
                 difficulty: difficultyMode,
                 isSwinging: false,
@@ -609,31 +663,77 @@
             if (!activeBot || activeBot.isDead || isDead) return;
 
             const bot = activeBot;
+            const now = Date.now();
+
+            // Bot physics movement
             bot.mesh.position.x += bot.kbVelX;
             bot.mesh.position.z += bot.kbVelZ;
             bot.kbVelX *= 0.82;
             bot.kbVelZ *= 0.82;
 
             const dist = bot.mesh.position.distanceTo(player.position);
-            const now = Date.now();
-
             const dx = player.position.x - bot.mesh.position.x;
             const dz = player.position.z - bot.mesh.position.z;
             bot.mesh.rotation.y = Math.atan2(dx, dz);
 
-            if (dist > 3.8) {
+            // BOT DECISION MAKING: HEAL / WEAPON SWITCH / SHIELDING
+            
+            // 1. Healing logic (Eat Gapple if low health and has apples left)
+            if (bot.health < 40 && bot.gappleCount > 0 && now - bot.lastGappleTime > 4000 && !bot.isEating) {
+                bot.isEating = true;
+                bot.eatTimer = 0;
+                bot.selectedSlot = 3;
+            }
+
+            if (bot.isEating) {
+                bot.eatTimer += 0.016;
+                if (bot.eatTimer >= 1.2) {
+                    bot.gappleCount--;
+                    bot.health = Math.min(100, bot.health + 20);
+                    bot.absorptionHealth = 10;
+                    bot.lastGappleTime = now;
+                    bot.isEating = false;
+                    spawnPopText(bot.mesh.position, '+20 HP', 'heal');
+                    bot.selectedSlot = 1;
+                }
+            } else {
+                // 2. Weapon Switch Logic (If player is shielding, bot uses Axe to break guard)
+                if (isShielding && isAttackerInFront(player.position, player.rotation.y, bot.mesh.position)) {
+                    bot.selectedSlot = 2; // Axe
+                } else {
+                    bot.selectedSlot = 1; // Sword
+                }
+
+                // 3. Shielding Logic (Bot shields when near player or when player is swinging)
+                const canBotShield = now >= bot.shieldBrokenUntil;
+                if (canBotShield && dist <= 6.0 && (isSwinging || Math.random() < 0.3)) {
+                    bot.isShielding = true;
+                } else {
+                    bot.isShielding = false;
+                }
+            }
+
+            // Update Bot Rig visual visibility based on equipped slot
+            bot.mesh.rig.swordGroup.visible = (bot.selectedSlot === 1);
+            bot.mesh.rig.axeGroup.visible = (bot.selectedSlot === 2);
+            bot.mesh.rig.gappleMesh.visible = (bot.selectedSlot === 3);
+            bot.mesh.rig.shieldMesh.visible = bot.isShielding && now >= bot.shieldBrokenUntil;
+
+            // Bot Movement towards player
+            if (dist > 3.8 && !bot.isEating) {
                 const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
-                bot.mesh.position.x += moveDir.x * bot.speed;
-                bot.mesh.position.z += moveDir.z * bot.speed;
+                bot.mesh.position.x += moveDir.x * (bot.isShielding ? bot.speed * 0.5 : bot.speed);
+                bot.mesh.position.z += moveDir.z * (bot.isShielding ? bot.speed * 0.5 : bot.speed);
 
                 bot.walkCycleTime += 0.18;
                 const swing = Math.sin(bot.walkCycleTime) * 0.7;
-                bot.mesh.rig.leftArmGroup.rotation.x = swing;
+                bot.mesh.rig.leftArmGroup.rotation.x = bot.isShielding ? -Math.PI / 4 : swing;
                 if (!bot.isSwinging) bot.mesh.rig.rightArmGroup.rotation.x = -swing;
                 bot.mesh.rig.leftLegGroup.rotation.x = -swing;
                 bot.mesh.rig.rightLegGroup.rotation.x = swing;
             }
 
+            // Hard Bot Jump
             if (bot.difficulty === 'bot_hard' && dist <= 6.5 && bot.isGrounded && now - bot.lastJumpTime > 2000) {
                 bot.velocityY = 0.32;
                 bot.isGrounded = false;
@@ -650,11 +750,12 @@
                 bot.isGrounded = false;
             }
 
+            // Bot Attacking
             let attackCooldown = 1500;
             if (bot.difficulty === 'bot_medium') attackCooldown = 900;
             if (bot.difficulty === 'bot_hard') attackCooldown = 450;
 
-            if (dist <= 6.5 && now - bot.lastAttackTime > attackCooldown && !bot.isSwinging) {
+            if (dist <= 6.5 && now - bot.lastAttackTime > attackCooldown && !bot.isSwinging && !bot.isEating) {
                 bot.isSwinging = true;
                 bot.lastAttackTime = now;
 
@@ -662,9 +763,20 @@
                 bot.mesh.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
 
                 const isCrit = !bot.isGrounded;
-                let botDmg = isCrit ? 15 : 10;
+                let botDmg = (bot.selectedSlot === 2) ? (isCrit ? 20 : 14) : (isCrit ? 15 : 10);
 
-                if (isShielding) {
+                // Check direction of hit against player
+                const isFrontHit = isAttackerInFront(player.position, player.rotation.y, bot.mesh.position);
+                const wasShielded = isShielding && isFrontHit;
+
+                if (bot.selectedSlot === 2 && isShielding && isFrontHit) {
+                    // Bot breaks player guard with Axe
+                    shieldBrokenUntil = Date.now() + 5000;
+                    isShielding = false;
+                    player.rig.shieldMesh.visible = false;
+                    spawnPopText(player.position, 'GUARD BROKEN!', 'crit');
+                    playMinecraftSound('crit');
+                } else if (wasShielded) {
                     botDmg = Math.floor(botDmg * 0.2);
                     spawnPopText(player.position, 'BLOCKED', 'block');
                     playMinecraftSound('block');
@@ -678,9 +790,9 @@
                     playMinecraftSound(isCrit ? 'crit' : 'hit');
                 }
 
-                health = Math.max(0, health - botDmg);
-                document.getElementById('hp-text').innerText = health;
-                document.getElementById('health-fill').style.width = health + '%';
+                if (!wasShielded || bot.selectedSlot === 2) {
+                    applyDamageToPlayer(botDmg);
+                }
 
                 if (health <= 0 && !isDead) {
                     addKillFeed(`Bot defeated ${myId}`);
@@ -694,7 +806,6 @@
             }
         }
 
-        // --- 8. COMBAT SYSTEM & MINECRAFT SWORD SWING ---
         function attack() {
             if (selectedSlot === 3 || isSwinging) return;
 
@@ -705,28 +816,50 @@
             let damage = (selectedSlot === 2) ? (isCrit ? 20 : 14) : (isCrit ? 15 : 10);
             const maxReach = isGrounded ? 6.5 : 4.0;
 
-            // Attack Bot
+            // Attack Bot in Single Player
             if (activeGameMode !== 'ffa' && activeBot && !activeBot.isDead) {
                 const dist = player.position.distanceTo(activeBot.mesh.position);
                 if (dist <= maxReach) {
-                    activeBot.health -= damage;
-                    const kbDir = activeBot.mesh.position.clone().sub(player.position).normalize();
-                    activeBot.kbVelX = kbDir.x * 1.7;
-                    activeBot.kbVelZ = kbDir.z * 1.7;
-                    activeBot.velocityY = 0.30;
-                    activeBot.isGrounded = false;
+                    const now = Date.now();
+                    const isFrontHit = isAttackerInFront(activeBot.mesh.position, activeBot.mesh.rotation.y, player.position);
+                    const botWasShielding = activeBot.isShielding && now >= activeBot.shieldBrokenUntil && isFrontHit;
 
-                    // Show damage pop above bot for attacker
-                    spawnPopText(activeBot.mesh.position, damage, isCrit ? 'crit' : 'normal');
-                    playMinecraftSound(isCrit ? 'crit' : 'hit');
+                    if (selectedSlot === 2 && botWasShielding) {
+                        // Player breaks Bot Guard with Axe
+                        activeBot.shieldBrokenUntil = now + 5000;
+                        activeBot.isShielding = false;
+                        spawnPopText(activeBot.mesh.position, 'GUARD BROKEN!', 'crit');
+                        playMinecraftSound('crit');
+                    } else if (botWasShielding) {
+                        damage = Math.floor(damage * 0.2);
+                        spawnPopText(activeBot.mesh.position, 'BLOCKED', 'block');
+                        playMinecraftSound('block');
+                    } else {
+                        spawnPopText(activeBot.mesh.position, damage, isCrit ? 'crit' : 'normal');
+                        playMinecraftSound(isCrit ? 'crit' : 'hit');
+                    }
+
+                    if (!botWasShielding) {
+                        activeBot.health -= damage;
+                        const kbDir = activeBot.mesh.position.clone().sub(player.position).normalize();
+                        activeBot.kbVelX = kbDir.x * 1.7;
+                        activeBot.kbVelZ = kbDir.z * 1.7;
+                        activeBot.velocityY = 0.30;
+                        activeBot.isGrounded = false;
+                    }
 
                     if (activeBot.health <= 0) {
                         activeBot.isDead = true;
                         activeBot.mesh.visible = false;
                         addKillFeed(`You defeated Bot (${activeBot.difficulty.replace('bot_', '').toUpperCase()})`);
+                        
+                        // REFILL PLAYER GAPPLES TO 5 ON BOT KILL
+                        refillGoldenApplesOnKill();
+
                         setTimeout(() => {
                             if (activeBot) {
                                 activeBot.health = 100;
+                                activeBot.gappleCount = 5;
                                 activeBot.isDead = false;
                                 activeBot.mesh.position.set((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20 - 10);
                                 activeBot.mesh.visible = true;
@@ -736,7 +869,7 @@
                 }
             }
 
-            // Attack Online Players
+            // Attack Players in FFA
             if (activeGameMode === 'ffa') {
                 for (let id in remotePlayers) {
                     const target = remotePlayers[id];
@@ -746,9 +879,6 @@
                         const kbDir = target.position.clone().sub(player.position).normalize();
                         const isAxeHit = (selectedSlot === 2);
 
-                        // SHOW DAMAGE POP TEXT DIRECTLY ON ATTACKER'S SCREEN
-                        spawnPopText(target.position, damage, isCrit ? 'crit' : 'normal');
-
                         const targetRef = db.ref('players/' + id);
                         targetRef.once('value', (snapshot) => {
                             const data = snapshot.val();
@@ -756,10 +886,17 @@
                                 targetRef.update({ 
                                     hitByDmg: damage,
                                     hitByAxe: isAxeHit,
+                                    attackerX: player.position.x,
+                                    attackerZ: player.position.z,
                                     kbX: kbDir.x * 1.7,
                                     kbZ: kbDir.z * 1.7,
                                     kbY: 0.32
                                 });
+
+                                // Refill golden apples if hit fatal
+                                if (data.health - damage <= 0) {
+                                    refillGoldenApplesOnKill();
+                                }
                             }
                         });
                         playMinecraftSound(isCrit ? 'crit' : 'hit');
@@ -768,11 +905,13 @@
             }
         }
 
-        // --- 9. RESPAWN SYSTEM ---
         function triggerRespawn() {
             isDead = true;
             player.visible = false;
             if (document.pointerLockElement) document.exitPointerLock();
+
+            if (regenTimer) clearInterval(regenTimer);
+            regenTimer = null;
 
             const respawnScreen = document.getElementById('respawn-screen');
             const timerText = document.getElementById('respawn-timer');
@@ -789,6 +928,7 @@
                     respawnScreen.style.display = 'none';
 
                     health = 100;
+                    absorptionHealth = 0;
                     gappleCount = 5;
                     shieldBrokenUntil = 0;
                     isDead = false;
@@ -797,21 +937,19 @@
                     player.visible = true;
                     player.position.set((Math.random() - 0.5) * 30, 0, (Math.random() - 0.5) * 30);
                     
-                    document.getElementById('hp-text').innerText = 100;
-                    document.getElementById('health-fill').style.width = '100%';
+                    updateHealthUI();
                     document.getElementById('gapple-count').innerText = 5;
 
                     if (activeGameMode === 'ffa' && playerRef) {
                         playerRef.update({
                             x: player.position.x, y: 0, z: player.position.z,
-                            health: 100, kbX: 0, kbZ: 0, kbY: 0
+                            health: 100, absorptionHealth: 0, kbX: 0, kbZ: 0, kbY: 0
                         });
                     }
                 }
             }, 1000);
         }
 
-        // --- 10. REALTIME DATABASE SYNC ---
         function initFirebaseMultiplayer() {
             if (!playerRef) {
                 playerRef = db.ref('players/' + myId);
@@ -821,7 +959,7 @@
 
             playerRef.set({
                 x: player.position.x, y: 0, z: player.position.z,
-                rotY: 0, health: 100, kbX: 0, kbZ: 0, kbY: 0
+                rotY: 0, health: 100, absorptionHealth: 0, kbX: 0, kbZ: 0, kbY: 0
             });
 
             if (!firebaseListenersAttached) {
@@ -846,9 +984,11 @@
                     if (id === myId) {
                         if (data.hitByDmg) {
                             let dmg = data.hitByDmg;
-                            let wasShielded = isShielding;
+                            const attackerPos = new THREE.Vector3(data.attackerX || 0, player.position.y, data.attackerZ || 0);
+                            const isFrontHit = isAttackerInFront(player.position, player.rotation.y, attackerPos);
+                            let wasShielded = isShielding && isFrontHit;
 
-                            if (data.hitByAxe && wasShielded) {
+                            if (data.hitByAxe && isShielding && isFrontHit) {
                                 shieldBrokenUntil = Date.now() + 5000;
                                 isShielding = false;
                                 player.rig.shieldMesh.visible = false;
@@ -868,13 +1008,10 @@
                                 kbVelZ = data.kbZ || 0;
                                 velocityY = data.kbY || 0.3;
                                 isGrounded = false;
+                                applyDamageToPlayer(dmg);
                             }
 
-                            health = Math.max(0, health - dmg);
-                            document.getElementById('hp-text').innerText = health;
-                            document.getElementById('health-fill').style.width = health + '%';
-
-                            playerRef.update({ hitByDmg: null, hitByAxe: null, health });
+                            playerRef.update({ hitByDmg: null, hitByAxe: null, health, absorptionHealth });
 
                             if (health <= 0 && !isDead) {
                                 addKillFeed(`${myId} was defeated`);
@@ -898,7 +1035,6 @@
             }
         }
 
-        // Floating Damage Numbers (screen-projected 3D position)
         function spawnPopText(position3D, text, type = 'normal') {
             const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
             vec.project(camera);
@@ -925,7 +1061,6 @@
             setTimeout(() => msg.remove(), 4500);
         }
 
-        // --- 11. MAIN ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -985,14 +1120,13 @@
 
                     if (player.position.y < -35 && !isDead) {
                         health = 0;
-                        document.getElementById('hp-text').innerText = 0;
-                        document.getElementById('health-fill').style.width = '0%';
-                        if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health: 0 });
+                        absorptionHealth = 0;
+                        updateHealthUI();
+                        if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health: 0, absorptionHealth: 0 });
                         addKillFeed(`${myId} fell into the void`);
                         triggerRespawn();
                     }
 
-                    // Minecraft Sword Attack Motion Loop
                     if (isSwinging) {
                         swingProgress += 0.07;
                         if (swingProgress >= 1) {
@@ -1001,9 +1135,9 @@
                             player.rig.rightArmGroup.rotation.set(0, 0, 0);
                         } else {
                             const arc = Math.sin(swingProgress * Math.PI);
-                            player.rig.rightArmGroup.rotation.x = -arc * 1.7; // Chop downward
-                            player.rig.rightArmGroup.rotation.y = -arc * 0.9; // Slash across chest
-                            player.rig.rightArmGroup.rotation.z = arc * 0.5;  // Tilt angle
+                            player.rig.rightArmGroup.rotation.x = -arc * 1.7;
+                            player.rig.rightArmGroup.rotation.y = -arc * 0.9;
+                            player.rig.rightArmGroup.rotation.z = arc * 0.5;
                         }
                     }
 
