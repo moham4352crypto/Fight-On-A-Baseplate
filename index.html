@@ -53,6 +53,9 @@
             background: #222; color: #fff; outline: none;
         }
 
+        .toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 16px; font-weight: bold; color: #fff; }
+        .toggle-row input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: #00c6ff; }
+
         #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 8px; pointer-events: none; z-index: 10; font-family: monospace; display: none; }
         #health-bar-container { position: relative; width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
         #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
@@ -153,6 +156,14 @@
                     <input type="number" id="custom-gapple-input" min="1" max="200" value="10">
                 </div>
             </div>
+
+            <div class="setup-group">
+                <span class="setup-label">💀 Game Rules:</span>
+                <label class="toggle-row">
+                    <input type="checkbox" id="no-respawn-toggle">
+                    Disable Respawns (Permanent Death / Sudden Death)
+                </label>
+            </div>
         </div>
 
         <div style="display: flex; gap: 14px;">
@@ -204,8 +215,9 @@
     <div id="shiftlock-icon"></div>
 
     <div id="respawn-screen">
-        <h1>YOU DIED</h1>
-        <p>Respawning in <span id="respawn-timer">3</span>...</p>
+        <h1 id="respawn-title">YOU DIED</h1>
+        <p id="respawn-sub">Respawning in <span id="respawn-timer">3</span>...</p>
+        <button id="gameover-btn" class="menu-btn btn-back" style="display: none; margin-top: 15px;" onclick="returnToMenu()">Return to Main Menu</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -224,14 +236,14 @@
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(340, now);
-                osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
-                gain.gain.setValueAtTime(0.4, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.frequency.setValueAtTime(380, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+                gain.gain.setValueAtTime(1.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
                 osc.connect(gain);
                 gain.connect(audioCtx.destination);
                 osc.start();
-                osc.stop(now + 0.1);
+                osc.stop(now + 0.12);
                 return;
             }
 
@@ -246,11 +258,11 @@
 
             const filter = audioCtx.createBiquadFilter();
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(isCrit ? 1400 : 900, now);
-            filter.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+            filter.frequency.setValueAtTime(isCrit ? 1600 : 1100, now);
+            filter.frequency.exponentialRampToValueAtTime(120, now + 0.08);
 
             const gain = audioCtx.createGain();
-            gain.gain.setValueAtTime(isCrit ? 0.6 : 0.45, now);
+            gain.gain.setValueAtTime(isCrit ? 1.5 : 1.2, now);
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
 
             noise.connect(filter);
@@ -261,9 +273,9 @@
             const osc = audioCtx.createOscillator();
             const oscGain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(isCrit ? 220 : 160, now);
-            osc.frequency.exponentialRampToValueAtTime(40, now + 0.08);
-            oscGain.gain.setValueAtTime(0.5, now);
+            osc.frequency.setValueAtTime(isCrit ? 260 : 190, now);
+            osc.frequency.exponentialRampToValueAtTime(50, now + 0.08);
+            oscGain.gain.setValueAtTime(1.0, now);
             oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
             osc.connect(oscGain);
             oscGain.connect(audioCtx.destination);
@@ -294,6 +306,7 @@
         const HALF_BASEPLATE = BASEPLATE_SIZE / 2;
         let activeGameMode = 'menu';
         let selectedBotDifficulty = 'bot_easy';
+        let noRespawnEnabled = false;
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x7ec0ee);
@@ -665,6 +678,8 @@
         function startBotMatch() {
             const count = parseInt(document.getElementById('custom-bot-input').value) || 1;
             const apples = parseInt(document.getElementById('custom-gapple-input').value) || 5;
+            noRespawnEnabled = document.getElementById('no-respawn-toggle').checked;
+
             document.getElementById('bot-count-menu').style.display = 'none';
             startGame(selectedBotDifficulty, count, apples);
         }
@@ -675,6 +690,7 @@
 
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('bot-count-menu').style.display = 'none';
+            document.getElementById('respawn-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'block';
             document.getElementById('hotbar').style.display = 'flex';
             document.getElementById('status-overlay').style.display = 'flex';
@@ -712,6 +728,7 @@
             activeGameMode = 'menu';
             document.getElementById('main-menu').style.display = 'flex';
             document.getElementById('bot-count-menu').style.display = 'none';
+            document.getElementById('respawn-screen').style.display = 'none';
             document.getElementById('ui').style.display = 'none';
             document.getElementById('hotbar').style.display = 'none';
             document.getElementById('status-overlay').style.display = 'none';
@@ -734,7 +751,7 @@
                 const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
                 
                 const angle = (i / count) * Math.PI * 2 + (Math.random() * 0.4 - 0.2);
-                const radius = 30 + Math.random() * 60; // Keep initial spawn well inside baseplate
+                const radius = 30 + Math.random() * 60;
                 
                 const spawnX = Math.sin(angle) * radius;
                 const spawnZ = Math.cos(angle) * radius;
@@ -765,7 +782,7 @@
                     kbVelX: 0, kbVelZ: 0,
                     isDead: false,
                     walkCycleTime: Math.random() * Math.PI,
-                    orbitOffset: (Math.random() - 0.5) * 1.5,
+                    orbitOffset: (Math.random() - 0.5) * 2.2,
                     attackCooldownUntil: 0
                 });
             }
@@ -803,13 +820,15 @@
                 bot.kbVelX *= 0.82;
                 bot.kbVelZ *= 0.82;
 
-                // Push bots away from each other
+                // REPEL / SEPARATION FORCE: Keeps bots apart so they never clamp or stack
                 activeBots.forEach((otherBot) => {
                     if (otherBot !== bot && !otherBot.isDead) {
                         const botDist = bot.mesh.position.distanceTo(otherBot.mesh.position);
-                        if (botDist < 3.2 && botDist > 0.01) {
+                        const MIN_SPACING = 5.0;
+                        if (botDist < MIN_SPACING && botDist > 0.001) {
                             const pushDir = bot.mesh.position.clone().sub(otherBot.mesh.position).setY(0).normalize();
-                            bot.mesh.position.addScaledVector(pushDir, (3.2 - botDist) * 0.08);
+                            const force = (MIN_SPACING - botDist) * 0.12;
+                            bot.mesh.position.addScaledVector(pushDir, force);
                         }
                     }
                 });
@@ -858,13 +877,13 @@
                 bot.mesh.rig.gappleMesh.visible = (bot.selectedSlot === 3);
                 bot.mesh.rig.shieldMesh.visible = bot.isShielding && now >= bot.shieldBrokenUntil;
 
-                // MOVEMENT & FLANKING BEHAVIOR
+                // MOVEMENT & SPREAD OUT FLANKING BEHAVIOR
                 if (!bot.isEating) {
+                    let moveVec = new THREE.Vector3();
+
                     if (bot.canAttackTarget) {
                         if (distToPlayer > 3.8) {
-                            const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
-                            bot.mesh.position.x += moveDir.x * (bot.isShielding ? bot.speed * 0.5 : bot.speed);
-                            bot.mesh.position.z += moveDir.z * (bot.isShielding ? bot.speed * 0.5 : bot.speed);
+                            moveVec.set(dx, 0, dz).normalize();
                         }
                     } else {
                         const desiredDist = 12.0;
@@ -874,12 +893,26 @@
                         const targetX = player.position.x - Math.cos(orbitAngle) * desiredDist;
                         const targetZ = player.position.z - Math.sin(orbitAngle) * desiredDist;
 
-                        const flankDir = new THREE.Vector3(targetX - bot.mesh.position.x, 0, targetZ - bot.mesh.position.z);
-                        if (flankDir.length() > 0.5) {
-                            flankDir.normalize();
-                            bot.mesh.position.x += flankDir.x * (bot.speed * 0.8);
-                            bot.mesh.position.z += flankDir.z * (bot.speed * 0.8);
+                        moveVec.set(targetX - bot.mesh.position.x, 0, targetZ - bot.mesh.position.z);
+                        if (moveVec.length() > 0.5) moveVec.normalize();
+                        else moveVec.set(0, 0, 0);
+                    }
+
+                    activeBots.forEach((otherBot) => {
+                        if (otherBot !== bot && !otherBot.isDead) {
+                            const d = bot.mesh.position.distanceTo(otherBot.mesh.position);
+                            if (d < 5.5 && d > 0.01) {
+                                const push = bot.mesh.position.clone().sub(otherBot.mesh.position).setY(0).normalize();
+                                moveVec.addScaledVector(push, (5.5 - d) * 0.4);
+                            }
                         }
+                    });
+
+                    if (moveVec.lengthSq() > 0.001) {
+                        moveVec.normalize();
+                        const curSpeed = bot.isShielding ? bot.speed * 0.5 : bot.speed;
+                        bot.mesh.position.x += moveVec.x * curSpeed;
+                        bot.mesh.position.z += moveVec.z * curSpeed;
                     }
 
                     bot.walkCycleTime += 0.18;
@@ -915,28 +948,32 @@
                 if (bot.mesh.position.y < -35 && !bot.isDead) {
                     bot.isDead = true;
                     bot.mesh.visible = false;
-                    addKillFeed(`A Bot fell into the void`);
                     refillGoldenApplesOnKill();
 
-                    setTimeout(() => {
-                        if (bot) {
-                            bot.health = 100;
-                            bot.gappleCount = startingGapples;
-                            bot.isDead = false;
-                            bot.velocityY = 0;
-                            bot.kbVelX = 0;
-                            bot.kbVelZ = 0;
+                    if (noRespawnEnabled) {
+                        const remaining = activeBots.filter(b => !b.isDead).length;
+                        addKillFeed(`A Bot fell into the void (${remaining} left)`);
+                    } else {
+                        addKillFeed(`A Bot fell into the void`);
+                        setTimeout(() => {
+                            if (bot) {
+                                bot.health = 100;
+                                bot.gappleCount = startingGapples;
+                                bot.isDead = false;
+                                bot.velocityY = 0;
+                                bot.kbVelX = 0;
+                                bot.kbVelZ = 0;
 
-                            // Respawn safely back on the baseplate surface
-                            const angle = Math.random() * Math.PI * 2;
-                            const radius = 40 + Math.random() * 40;
-                            const respawnX = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.x + Math.sin(angle) * radius));
-                            const respawnZ = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.z + Math.cos(angle) * radius));
+                                const angle = Math.random() * Math.PI * 2;
+                                const radius = 40 + Math.random() * 40;
+                                const respawnX = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.x + Math.sin(angle) * radius));
+                                const respawnZ = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.z + Math.cos(angle) * radius));
 
-                            bot.mesh.position.set(respawnX, 0, respawnZ);
-                            bot.mesh.visible = true;
-                        }
-                    }, 3500);
+                                bot.mesh.position.set(respawnX, 0, respawnZ);
+                                bot.mesh.visible = true;
+                            }
+                        }, 3500);
+                    }
                 }
 
                 // ATTACK LOGIC
@@ -1051,28 +1088,33 @@
                     if (closestBot.health <= 0) {
                         closestBot.isDead = true;
                         closestBot.mesh.visible = false;
-                        addKillFeed(`You defeated a Bot!`);
                         
                         refillGoldenApplesOnKill();
 
-                        setTimeout(() => {
-                            if (closestBot) {
-                                closestBot.health = 100;
-                                closestBot.gappleCount = startingGapples;
-                                closestBot.isDead = false;
-                                closestBot.velocityY = 0;
-                                closestBot.kbVelX = 0;
-                                closestBot.kbVelZ = 0;
-                                
-                                const angle = Math.random() * Math.PI * 2;
-                                const radius = 40 + Math.random() * 40;
-                                const respawnX = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.x + Math.sin(angle) * radius));
-                                const respawnZ = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.z + Math.cos(angle) * radius));
+                        if (noRespawnEnabled) {
+                            const remaining = activeBots.filter(b => !b.isDead).length;
+                            addKillFeed(`You defeated a Bot! (${remaining} left)`);
+                        } else {
+                            addKillFeed(`You defeated a Bot!`);
+                            setTimeout(() => {
+                                if (closestBot) {
+                                    closestBot.health = 100;
+                                    closestBot.gappleCount = startingGapples;
+                                    closestBot.isDead = false;
+                                    closestBot.velocityY = 0;
+                                    closestBot.kbVelX = 0;
+                                    closestBot.kbVelZ = 0;
+                                    
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const radius = 40 + Math.random() * 40;
+                                    const respawnX = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.x + Math.sin(angle) * radius));
+                                    const respawnZ = Math.max(-HALF_BASEPLATE + 15, Math.min(HALF_BASEPLATE - 15, player.position.z + Math.cos(angle) * radius));
 
-                                closestBot.mesh.position.set(respawnX, 0, respawnZ);
-                                closestBot.mesh.visible = true;
-                            }
-                        }, 3500);
+                                    closestBot.mesh.position.set(respawnX, 0, respawnZ);
+                                    closestBot.mesh.visible = true;
+                                }
+                            }, 3500);
+                        }
                     }
                 }
             }
@@ -1120,42 +1162,56 @@
             regenTimer = null;
 
             const respawnScreen = document.getElementById('respawn-screen');
+            const titleText = document.getElementById('respawn-title');
+            const subText = document.getElementById('respawn-sub');
             const timerText = document.getElementById('respawn-timer');
+            const gameOverBtn = document.getElementById('gameover-btn');
+
             respawnScreen.style.display = 'flex';
 
-            let count = 3;
-            timerText.innerText = count;
+            if (noRespawnEnabled) {
+                titleText.innerText = "GAME OVER";
+                subText.style.display = 'none';
+                gameOverBtn.style.display = 'block';
+            } else {
+                titleText.innerText = "YOU DIED";
+                subText.style.display = 'block';
+                gameOverBtn.style.display = 'none';
 
-            const countdown = setInterval(() => {
-                count--;
+                let count = 3;
                 timerText.innerText = count;
-                if (count <= 0) {
-                    clearInterval(countdown);
-                    respawnScreen.style.display = 'none';
 
-                    health = 100;
-                    absorptionHealth = 0;
-                    gappleCount = startingGapples;
-                    shieldBrokenUntil = 0;
-                    isDead = false;
-                    velocityY = 0; kbVelX = 0; kbVelZ = 0;
-                    isGrounded = true;
-                    player.visible = true;
+                const countdown = setInterval(() => {
+                    count--;
+                    timerText.innerText = count;
+                    if (count <= 0) {
+                        clearInterval(countdown);
+                        respawnScreen.style.display = 'none';
 
-                    player.position.set(0, 0, 0);
-                    player.rotation.y = 0;
-                    
-                    updateHealthUI();
-                    document.getElementById('gapple-count').innerText = startingGapples;
+                        health = 100;
+                        absorptionHealth = 0;
+                        gappleCount = startingGapples;
+                        shieldBrokenUntil = 0;
+                        isDead = false;
+                        velocityY = 0; kbVelX = 0; kbVelZ = 0;
+                        isGrounded = true;
+                        player.visible = true;
 
-                    if (activeGameMode === 'ffa' && playerRef) {
-                        playerRef.update({
-                            x: player.position.x, y: 0, z: player.position.z,
-                            health: 100, absorptionHealth: 0, kbX: 0, kbZ: 0, kbY: 0
-                        });
+                        player.position.set(0, 0, 0);
+                        player.rotation.y = 0;
+                        
+                        updateHealthUI();
+                        document.getElementById('gapple-count').innerText = startingGapples;
+
+                        if (activeGameMode === 'ffa' && playerRef) {
+                            playerRef.update({
+                                x: player.position.x, y: 0, z: player.position.z,
+                                health: 100, absorptionHealth: 0, kbX: 0, kbZ: 0, kbY: 0
+                            });
+                        }
                     }
-                }
-            }, 1000);
+                }, 1000);
+            }
         }
 
         function initFirebaseMultiplayer() {
