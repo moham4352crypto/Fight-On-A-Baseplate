@@ -26,16 +26,40 @@
         .btn-medium { background: linear-gradient(135deg, #f2994a, #f2c94c); }
         .btn-hard { background: linear-gradient(135deg, #eb3349, #f45c43); }
         .menu-btn:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.15); }
-        .menu-btn:active { transform: translateY(1px); }
 
         /* In-Game UI HUD */
         #ui { position: absolute; top: 15px; left: 15px; color: white; background: rgba(0,0,0,0.65); padding: 12px 16px; border-radius: 8px; pointer-events: none; z-index: 10; font-family: monospace; display: none; }
         #health-bar { width: 220px; height: 18px; background: #333; border: 2px solid #fff; margin-top: 6px; border-radius: 4px; overflow: hidden; }
         #health-fill { width: 100%; height: 100%; background: #02e039; transition: width 0.15s; }
         
-        /* Mode Switcher Button (Top Left) */
         #menu-return-btn { position: absolute; top: 15px; left: 280px; z-index: 10; padding: 8px 14px; background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 6px; cursor: pointer; display: none; font-weight: bold; }
         #menu-return-btn:hover { background: rgba(255,255,255,0.4); }
+
+        /* Minecraft Hotbar */
+        #hotbar {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 8px; background: rgba(0,0,0,0.75); padding: 8px;
+            border-radius: 10px; border: 2px solid rgba(255,255,255,0.2); z-index: 10;
+        }
+        .hotbar-slot {
+            width: 60px; height: 60px; background: rgba(255,255,255,0.1); border: 2px solid #555;
+            border-radius: 8px; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; color: white; font-family: monospace; font-size: 11px;
+            position: relative; transition: all 0.1s;
+        }
+        .hotbar-slot.active { border-color: #00c6ff; background: rgba(0, 198, 255, 0.25); box-shadow: 0 0 10px #00c6ff; }
+        .hotbar-key { position: absolute; top: 3px; left: 5px; font-size: 10px; color: #aaa; }
+        .hotbar-icon { font-size: 22px; margin-top: 4px; }
+        .hotbar-count { position: absolute; bottom: 3px; right: 5px; font-weight: bold; color: #ffcc00; }
+
+        /* Shield & Eating Status Overlay */
+        #status-overlay {
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            display: none; flex-direction: column; align-items: center; gap: 6px; z-index: 10; pointer-events: none;
+        }
+        #eat-bar-container { width: 140px; height: 10px; background: rgba(0,0,0,0.8); border: 1px solid #fff; border-radius: 5px; overflow: hidden; display: none; }
+        #eat-bar-fill { width: 0%; height: 100%; background: #ffcc00; }
+        #shield-text { font-family: monospace; font-weight: bold; font-size: 16px; text-shadow: 0 0 6px #000; }
 
         /* Kill Feed */
         #killfeed { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 10; font-family: monospace; }
@@ -44,14 +68,14 @@
         /* Respawn Overlay */
         #respawn-screen { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; font-family: monospace; }
         #respawn-screen h1 { font-size: 42px; margin: 0; color: #ff3333; }
-        #respawn-screen p { font-size: 20px; margin-top: 10px; }
 
-        /* Damage Numbers (Normal & Crit) */
+        /* Damage Numbers */
         .damage-pop { position: absolute; font-weight: 900; pointer-events: none; animation: floatUp 0.75s ease-out forwards; z-index: 15; font-family: monospace; }
         .damage-pop.normal { color: #ffcc00; font-size: 26px; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
         .damage-pop.crit { color: #ff2200; font-size: 34px; text-shadow: 0 0 10px rgba(255, 34, 0, 0.8), 2px 2px 0 #000, -2px -2px 0 #000; }
+        .damage-pop.heal { color: #00ff66; font-size: 30px; text-shadow: 0 0 10px rgba(0,255,102,0.8), 2px 2px 0 #000; }
+        .damage-pop.block { color: #00c6ff; font-size: 24px; text-shadow: 2px 2px 0 #000; }
 
-        /* Reticles */
         #shiftlock-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; border: 2px solid cyan; border-radius: 50%; display: none; pointer-events: none; z-index: 5; }
 
         @keyframes floatUp {
@@ -59,19 +83,15 @@
             50% { transform: translate(-50%, -35px) scale(1); opacity: 1; }
             100% { transform: translate(-50%, -65px) scale(0.7); opacity: 0; }
         }
-        @keyframes fadeOut {
-            0% { opacity: 1; }
-            80% { opacity: 1; }
-            100% { opacity: 0; }
-        }
+        @keyframes fadeOut { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <!-- MAIN MENU SCREEN -->
+    <!-- MAIN MENU -->
     <div id="main-menu">
         <h1>FIGHT ON A BASEPLATE</h1>
-        <p>Select a Game Mode to Start Playing</p>
+        <p>Select a Game Mode to Play</p>
         <div class="menu-btn-container">
             <button class="menu-btn btn-ffa" onclick="startGame('ffa')">🌐 FFA (Multiplayer)</button>
             <button class="menu-btn btn-easy" onclick="startGame('bot_easy')">🤖 Bot - Easy</button>
@@ -85,13 +105,40 @@
         <div>HEALTH: <span id="hp-text">100</span>/100</div>
         <div id="health-bar"><div id="health-fill"></div></div>
         <div style="margin-top: 8px; font-size: 11px; opacity: 0.9;">
-            [Shift] Shift Lock | [Right-Click Drag] Orbit | [Scroll] Zoom<br>
-            [WASD] Camera Move | [E] Dash | [L-Click] Attack<br>
-            <span style="color: #ffcc00;">[Jump + Attack] = CRIT HIT (15 DMG)</span>
+            [1-3] Select Item | [Right-Hold] Shield<br>
+            [L-Click] Attack / Hold to Eat Gapple<br>
+            [Shift] Lock | [WASD] Move | [E] Dash
         </div>
     </div>
 
     <button id="menu-return-btn" onclick="returnToMenu()">⚙️ Main Menu</button>
+    
+    <!-- HOTBAR -->
+    <div id="hotbar">
+        <div class="hotbar-slot active" id="slot-1" onclick="selectSlot(1)">
+            <span class="hotbar-key">1</span>
+            <span class="hotbar-icon">⚔️</span>
+            <span>Sword</span>
+        </div>
+        <div class="hotbar-slot" id="slot-2" onclick="selectSlot(2)">
+            <span class="hotbar-key">2</span>
+            <span class="hotbar-icon">🪓</span>
+            <span>Axe</span>
+        </div>
+        <div class="hotbar-slot" id="slot-3" onclick="selectSlot(3)">
+            <span class="hotbar-key">3</span>
+            <span class="hotbar-icon">🍏</span>
+            <span>G-Apple</span>
+            <span class="hotbar-count" id="gapple-count">5</span>
+        </div>
+    </div>
+
+    <!-- STATUS OVERLAY -->
+    <div id="status-overlay">
+        <div id="shield-text"></div>
+        <div id="eat-bar-container"><div id="eat-bar-fill"></div></div>
+    </div>
+
     <div id="killfeed"></div>
     <div id="shiftlock-icon"></div>
 
@@ -124,11 +171,12 @@
         const myId = 'Player_' + Math.floor(1000 + Math.random() * 9000);
         let playerRef = null;
         let playersRef = null;
+        let firebaseListenersAttached = false;
 
         const BASEPLATE_SIZE = 250;
         const HALF_BASEPLATE = BASEPLATE_SIZE / 2;
 
-        let activeGameMode = 'menu'; // 'ffa', 'bot_easy', 'bot_medium', 'bot_hard'
+        let activeGameMode = 'menu';
 
         // --- 2. THREE.JS SCENE SETUP ---
         const scene = new THREE.Scene();
@@ -145,7 +193,6 @@
         sun.castShadow = true;
         scene.add(sun, new THREE.AmbientLight(0x909090));
 
-        // Baseplate
         const baseplate = new THREE.Mesh(
             new THREE.BoxGeometry(BASEPLATE_SIZE, 2, BASEPLATE_SIZE),
             new THREE.MeshStandardMaterial({ color: 0x636363, roughness: 0.7 })
@@ -158,7 +205,7 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Avatar Generator
+        // Character Rig Builder
         function createRobloxR6(shirtColor = 0x00a2ff, legColor = 0x111111) {
             const avatar = new THREE.Group();
 
@@ -167,32 +214,38 @@
             const legMat = new THREE.MeshStandardMaterial({ color: legColor });
             const armMat = new THREE.MeshStandardMaterial({ color: shirtColor });
             const steelMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.8, roughness: 0.2 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.5 });
 
             const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), torsoMat);
             torso.position.y = 3;
-            torso.castShadow = true;
             avatar.add(torso);
 
             const head = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), headMat);
             head.position.y = 4.6;
-            head.castShadow = true;
             avatar.add(head);
 
+            // Left Arm & Shield
             const leftArmGroup = new THREE.Group();
             leftArmGroup.position.set(-1.5, 4, 0);
             const leftArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
             leftArm.position.y = -1;
-            leftArm.castShadow = true;
             leftArmGroup.add(leftArm);
+
+            const shieldMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 0.3), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6 }));
+            shieldMesh.position.set(0, -1, -0.6);
+            shieldMesh.visible = false;
+            leftArmGroup.add(shieldMesh);
+
             avatar.add(leftArmGroup);
 
+            // Right Arm & Weapons
             const rightArmGroup = new THREE.Group();
             rightArmGroup.position.set(1.5, 4, 0);
             const rightArm = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), armMat);
             rightArm.position.y = -1;
-            rightArm.castShadow = true;
             rightArmGroup.add(rightArm);
 
+            // Sword
             const swordGroup = new THREE.Group();
             swordGroup.position.set(0, -1.8, -0.2);
             swordGroup.rotation.x = Math.PI / 3;
@@ -201,13 +254,31 @@
             swordGroup.add(blade);
             rightArmGroup.add(swordGroup);
 
+            // Axe
+            const axeGroup = new THREE.Group();
+            axeGroup.position.set(0, -1.8, -0.2);
+            axeGroup.rotation.x = Math.PI / 3;
+            const axeHandle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.6, 0.12), new THREE.MeshStandardMaterial({ color: 0x8b4513 }));
+            axeHandle.position.y = -1.2;
+            const axeHead = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.15), steelMat);
+            axeHead.position.set(0.3, -0.4, 0);
+            axeGroup.add(axeHandle, axeHead);
+            axeGroup.visible = false;
+            rightArmGroup.add(axeGroup);
+
+            // Golden Apple
+            const gappleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), goldMat);
+            gappleMesh.position.set(0, -1.8, -0.2);
+            gappleMesh.visible = false;
+            rightArmGroup.add(gappleMesh);
+
             avatar.add(rightArmGroup);
 
+            // Legs
             const leftLegGroup = new THREE.Group();
             leftLegGroup.position.set(-0.55, 2, 0);
             const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2, 1), legMat);
             leftLeg.position.y = -1;
-            leftLeg.castShadow = true;
             leftLegGroup.add(leftLeg);
             avatar.add(leftLegGroup);
 
@@ -215,11 +286,10 @@
             rightLegGroup.position.set(0.55, 2, 0);
             const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2, 1), legMat);
             rightLeg.position.y = -1;
-            rightLeg.castShadow = true;
             rightLegGroup.add(rightLeg);
             avatar.add(rightLegGroup);
 
-            avatar.rig = { leftArmGroup, rightArmGroup, leftLegGroup, rightLegGroup, swordGroup };
+            avatar.rig = { leftArmGroup, rightArmGroup, leftLegGroup, rightLegGroup, swordGroup, axeGroup, gappleMesh, shieldMesh };
             return avatar;
         }
 
@@ -228,13 +298,22 @@
         scene.add(player);
 
         const remotePlayers = {};
-
-        // Bot AI Object
         let activeBot = null;
 
-        // --- 3. CONTROLS & GAMEPLAY VARS ---
+        // --- 3. GAMEPLAY & ITEM VARS ---
+        let selectedSlot = 1; // 1: Sword, 2: Axe, 3: Golden Apple
+        let gappleCount = 5;
+        let lastGappleTime = 0;
+        let eatHoldTimer = 0;
+        let isEating = false;
+
+        let isShielding = false;
+        let shieldBrokenUntil = 0;
+
         let isShiftLock = false;
         let isRightMouseDown = false;
+        let isLeftMouseDown = false;
+
         let camYaw = 0;
         let camPitch = -0.25;
         let camDistance = 12;
@@ -247,14 +326,16 @@
         let velocityY = 0;
         let isGrounded = true;
 
-        let kbVelX = 0;
-        let kbVelZ = 0;
-
+        let kbVelX = 0, kbVelZ = 0;
         const keys = {};
 
+        // Key Listeners
         document.addEventListener('keydown', (e) => {
             if (isDead || activeGameMode === 'menu') return;
             keys[e.code] = true;
+            if (e.code === 'Digit1') selectSlot(1);
+            if (e.code === 'Digit2') selectSlot(2);
+            if (e.code === 'Digit3') selectSlot(3);
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') toggleShiftLock();
             if (e.code === 'KeyE' && canDash) triggerDash();
         });
@@ -262,17 +343,33 @@
 
         document.addEventListener('mousedown', (e) => {
             if (isDead || activeGameMode === 'menu') return;
-            if (e.button === 2) isRightMouseDown = true;
-            if (e.button === 0 && !isSwinging) attack();
+            if (e.button === 2) {
+                isRightMouseDown = true;
+                checkShieldState();
+            }
+            if (e.button === 0) {
+                isLeftMouseDown = true;
+                if (selectedSlot !== 3 && !isSwinging) attack();
+            }
         });
+
         document.addEventListener('mouseup', (e) => {
-            if (e.button === 2) isRightMouseDown = false;
+            if (e.button === 2) {
+                isRightMouseDown = false;
+                checkShieldState();
+            }
+            if (e.button === 0) {
+                isLeftMouseDown = false;
+                isEating = false;
+                eatHoldTimer = 0;
+                document.getElementById('eat-bar-container').style.display = 'none';
+            }
         });
         document.addEventListener('contextmenu', e => e.preventDefault());
 
         document.addEventListener('mousemove', (e) => {
             if (activeGameMode === 'menu') return;
-            if (isShiftLock || isRightMouseDown) {
+            if (isShiftLock || (isRightMouseDown && !isShielding)) {
                 camYaw -= e.movementX * 0.0035;
                 camPitch = Math.max(-1.2, Math.min(1.2, camPitch - e.movementY * 0.0035));
             }
@@ -297,22 +394,98 @@
             setTimeout(() => canDash = true, 800);
         }
 
-        // --- 4. GAME START & MENU CONTROL ---
+        // --- 4. ITEM & SHIELD LOGIC ---
+        function selectSlot(slot) {
+            selectedSlot = slot;
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`slot-${i}`).classList.toggle('active', i === slot);
+            }
+
+            // Visual weapon visibility
+            player.rig.swordGroup.visible = (slot === 1);
+            player.rig.axeGroup.visible = (slot === 2);
+            player.rig.gappleMesh.visible = (slot === 3);
+
+            checkShieldState();
+        }
+
+        function checkShieldState() {
+            const now = Date.now();
+            const canShield = isRightMouseDown && (selectedSlot === 1 || selectedSlot === 2) && now >= shieldBrokenUntil;
+            
+            isShielding = canShield;
+            player.rig.shieldMesh.visible = canShield;
+
+            const shieldText = document.getElementById('shield-text');
+            if (now < shieldBrokenUntil) {
+                shieldText.style.color = '#ff3333';
+                shieldText.innerText = `GUARD BROKEN! (${Math.ceil((shieldBrokenUntil - now) / 1000)}s)`;
+            } else if (isShielding) {
+                shieldText.style.color = '#00c6ff';
+                shieldText.innerText = '🛡️ SHIELDING';
+            } else {
+                shieldText.innerText = '';
+            }
+        }
+
+        function handleGoldenAppleEating() {
+            if (selectedSlot !== 3 || !isLeftMouseDown || gappleCount <= 0 || isDead) return;
+
+            const now = Date.now();
+            if (now - lastGappleTime < 4000) {
+                document.getElementById('shield-text').style.color = '#ffcc00';
+                document.getElementById('shield-text').innerText = `G-Apple Cooldown (${Math.ceil((4000 - (now - lastGappleTime)) / 1000)}s)`;
+                return;
+            }
+
+            isEating = true;
+            eatHoldTimer += 0.016;
+            document.getElementById('eat-bar-container').style.display = 'block';
+            document.getElementById('eat-bar-fill').style.width = Math.min(100, (eatHoldTimer / 1.2) * 100) + '%';
+
+            if (eatHoldTimer >= 1.2) {
+                // Eat Apple
+                gappleCount--;
+                lastGappleTime = now;
+                health = Math.min(100, health + 20);
+                
+                document.getElementById('hp-text').innerText = health;
+                document.getElementById('health-fill').style.width = health + '%';
+                document.getElementById('gapple-count').innerText = gappleCount;
+
+                spawnPopText(player.position, '+20 HP', 'heal');
+
+                eatHoldTimer = 0;
+                isEating = false;
+                document.getElementById('eat-bar-container').style.display = 'none';
+
+                if (activeGameMode === 'ffa' && playerRef) playerRef.update({ health });
+            }
+        }
+
+        // --- 5. GAME START & BOT SETUP ---
         function startGame(mode) {
             activeGameMode = mode;
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('ui').style.display = 'block';
+            document.getElementById('hotbar').style.display = 'flex';
+            document.getElementById('status-overlay').style.display = 'flex';
             document.getElementById('menu-return-btn').style.display = 'block';
 
-            // Reset local player
+            // Reset local player state
             health = 100;
+            gappleCount = 5;
+            shieldBrokenUntil = 0;
             isDead = false;
             player.visible = true;
             player.position.set(0, 0, 0);
+
             document.getElementById('hp-text').innerText = 100;
             document.getElementById('health-fill').style.width = '100%';
+            document.getElementById('gapple-count').innerText = 5;
 
-            // Clear existing bots
+            selectSlot(1);
+
             if (activeBot) {
                 scene.remove(activeBot.mesh);
                 activeBot = null;
@@ -321,7 +494,6 @@
             if (mode === 'ffa') {
                 initFirebaseMultiplayer();
             } else {
-                // Initialize Offline Bot
                 spawnBot(mode);
             }
         }
@@ -330,20 +502,21 @@
             activeGameMode = 'menu';
             document.getElementById('main-menu').style.display = 'flex';
             document.getElementById('ui').style.display = 'none';
+            document.getElementById('hotbar').style.display = 'none';
+            document.getElementById('status-overlay').style.display = 'none';
             document.getElementById('menu-return-btn').style.display = 'none';
             if (document.pointerLockElement) document.exitPointerLock();
 
-            // Cleanup Bot
             if (activeBot) {
                 scene.remove(activeBot.mesh);
                 activeBot = null;
             }
         }
 
-        // --- 5. BOT AI SYSTEM ---
+        // --- 6. BOT AI SYSTEM ---
         function spawnBot(difficultyMode) {
             const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
-            botMesh.position.set(0, 0, -12); // Spawn facing player
+            botMesh.position.set(0, 0, -12);
             scene.add(botMesh);
 
             let speed = 0.12;
@@ -353,7 +526,6 @@
             activeBot = {
                 mesh: botMesh,
                 health: 100,
-                maxHealth: 100,
                 speed: speed,
                 difficulty: difficultyMode,
                 isSwinging: false,
@@ -361,8 +533,7 @@
                 lastJumpTime: 0,
                 velocityY: 0,
                 isGrounded: true,
-                kbVelX: 0,
-                kbVelZ: 0,
+                kbVelX: 0, kbVelZ: 0,
                 isDead: false,
                 walkCycleTime: 0
             };
@@ -372,29 +543,23 @@
             if (!activeBot || activeBot.isDead || isDead) return;
 
             const bot = activeBot;
-
-            // Apply Knockback Friction
             bot.mesh.position.x += bot.kbVelX;
             bot.mesh.position.z += bot.kbVelZ;
             bot.kbVelX *= 0.82;
             bot.kbVelZ *= 0.82;
 
-            // Distance to player
             const dist = bot.mesh.position.distanceTo(player.position);
             const now = Date.now();
 
-            // Face towards player
             const dx = player.position.x - bot.mesh.position.x;
             const dz = player.position.z - bot.mesh.position.z;
             bot.mesh.rotation.y = Math.atan2(dx, dz);
 
-            // Movement logic
             if (dist > 3.8) {
                 const moveDir = new THREE.Vector3(dx, 0, dz).normalize();
                 bot.mesh.position.x += moveDir.x * bot.speed;
                 bot.mesh.position.z += moveDir.z * bot.speed;
 
-                // Bot Walking Animation
                 bot.walkCycleTime += 0.18;
                 const swing = Math.sin(bot.walkCycleTime) * 0.7;
                 bot.mesh.rig.leftArmGroup.rotation.x = swing;
@@ -403,14 +568,12 @@
                 bot.mesh.rig.rightLegGroup.rotation.x = swing;
             }
 
-            // Hard Bot Jumps for CRITS!
             if (bot.difficulty === 'bot_hard' && dist <= 6.5 && bot.isGrounded && now - bot.lastJumpTime > 2000) {
                 bot.velocityY = 0.32;
                 bot.isGrounded = false;
                 bot.lastJumpTime = now;
             }
 
-            // Gravity & Jump Physics for Bot
             bot.mesh.position.y += bot.velocityY;
             if (bot.mesh.position.y <= 0) {
                 bot.mesh.position.y = 0;
@@ -421,7 +584,6 @@
                 bot.isGrounded = false;
             }
 
-            // Bot Attack Logic (Max Reach: 6.5 units)
             let attackCooldown = 1500;
             if (bot.difficulty === 'bot_medium') attackCooldown = 900;
             if (bot.difficulty === 'bot_hard') attackCooldown = 450;
@@ -433,23 +595,25 @@
                 const origRotX = bot.mesh.rig.rightArmGroup.rotation.x;
                 bot.mesh.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
 
-                // Bot Damage: Crit if airborne
                 const isCrit = !bot.isGrounded;
-                const botDmg = isCrit ? 15 : 10;
+                let botDmg = isCrit ? 15 : 10;
 
-                // Deal damage to player
+                // Shield Damage Reduction / Shield Break
+                if (isShielding) {
+                    botDmg = Math.floor(botDmg * 0.2); // 80% blocked
+                    spawnPopText(player.position, 'BLOCKED', 'block');
+                } else {
+                    const kbDir = player.position.clone().sub(bot.mesh.position).normalize();
+                    kbVelX = kbDir.x * 1.5;
+                    kbVelZ = kbDir.z * 1.5;
+                    velocityY = 0.28;
+                    isGrounded = false;
+                    spawnPopText(player.position, botDmg, isCrit ? 'crit' : 'normal');
+                }
+
                 health = Math.max(0, health - botDmg);
                 document.getElementById('hp-text').innerText = health;
                 document.getElementById('health-fill').style.width = health + '%';
-
-                // Player Knockback Impulse
-                const kbDir = player.position.clone().sub(bot.mesh.position).normalize();
-                kbVelX = kbDir.x * 1.5;
-                kbVelZ = kbDir.z * 1.5;
-                velocityY = 0.28; // Air pop
-                isGrounded = false;
-
-                spawnDamagePop(player.position, botDmg, isCrit);
 
                 if (health <= 0 && !isDead) {
                     addKillFeed(`Bot defeated ${myId}`);
@@ -463,87 +627,49 @@
             }
         }
 
-        function damageBot(amount, isCrit) {
-            if (!activeBot || activeBot.isDead) return;
-
-            activeBot.health -= amount;
-            
-            // Knockback impulse on bot
-            const kbDir = activeBot.mesh.position.clone().sub(player.position).normalize();
-            activeBot.kbVelX = kbDir.x * 1.7;
-            activeBot.kbVelZ = kbDir.z * 1.7;
-            activeBot.velocityY = 0.30; // Air launch
-            activeBot.isGrounded = false;
-
-            spawnDamagePop(activeBot.mesh.position, amount, isCrit);
-
-            if (activeBot.health <= 0) {
-                activeBot.isDead = true;
-                activeBot.mesh.visible = false;
-                addKillFeed(`You defeated Bot (${activeBot.difficulty.replace('bot_', '').toUpperCase()})`);
-
-                // Respawn Bot after 3s
-                setTimeout(() => {
-                    if (activeBot) {
-                        activeBot.health = 100;
-                        activeBot.isDead = false;
-                        activeBot.mesh.position.set((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20 - 10);
-                        activeBot.mesh.visible = true;
-                    }
-                }, 3000);
-            }
-        }
-
-        // --- 6. FLOATING DAMAGE & KILL FEED UI ---
-        function spawnDamagePop(position3D, amount = 10, isCrit = false) {
-            const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
-            vec.project(camera);
-
-            const x = (vec.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(vec.y * 0.5) + 0.5) * window.innerHeight;
-
-            const pop = document.createElement('div');
-            pop.className = `damage-pop ${isCrit ? 'crit' : 'normal'}`;
-            pop.innerText = isCrit ? `-${amount} CRIT!` : `-${amount}`;
-            pop.style.left = `${x}px`;
-            pop.style.top = `${y}px`;
-
-            document.body.appendChild(pop);
-            setTimeout(() => pop.remove(), 750);
-        }
-
-        function addKillFeed(message) {
-            const feed = document.getElementById('killfeed');
-            const msg = document.createElement('div');
-            msg.className = 'kill-msg';
-            msg.innerText = message;
-            feed.appendChild(msg);
-            setTimeout(() => msg.remove(), 4500);
-        }
-
-        // --- 7. COMBAT & ATTACK (REACH ADJUSTED TO MATCH IMAGE) ---
+        // --- 7. COMBAT SYSTEM & DAMAGE ---
         function attack() {
+            if (selectedSlot === 3) return; // Cannot attack with apple
+
             isSwinging = true;
-            const originalRotX = player.rig.rightArmGroup.rotation.x;
-            player.rig.rightArmGroup.rotation.x = -Math.PI / 1.5;
+            const activeArm = player.rig.rightArmGroup;
+            const originalRotX = activeArm.rotation.x;
+            activeArm.rotation.x = -Math.PI / 1.5;
 
-            // Crit Check: Jump Attack deals 15 damage
             const isCrit = !isGrounded;
-            const damage = isCrit ? 15 : 10;
-
-            // Ground Reach extended to 6.5 units (Matches screenshot gap)
-            // Air Reach: 4.0 units
+            let damage = (selectedSlot === 2) ? (isCrit ? 20 : 14) : (isCrit ? 15 : 10);
             const maxReach = isGrounded ? 6.5 : 4.0;
 
-            // Offline Bot Attack
+            // Attack Bot
             if (activeGameMode !== 'ffa' && activeBot && !activeBot.isDead) {
                 const dist = player.position.distanceTo(activeBot.mesh.position);
                 if (dist <= maxReach) {
-                    damageBot(damage, isCrit);
+                    activeBot.health -= damage;
+                    const kbDir = activeBot.mesh.position.clone().sub(player.position).normalize();
+                    activeBot.kbVelX = kbDir.x * 1.7;
+                    activeBot.kbVelZ = kbDir.z * 1.7;
+                    activeBot.velocityY = 0.30;
+                    activeBot.isGrounded = false;
+
+                    spawnPopText(activeBot.mesh.position, damage, isCrit ? 'crit' : 'normal');
+
+                    if (activeBot.health <= 0) {
+                        activeBot.isDead = true;
+                        activeBot.mesh.visible = false;
+                        addKillFeed(`You defeated Bot (${activeBot.difficulty.replace('bot_', '').toUpperCase()})`);
+                        setTimeout(() => {
+                            if (activeBot) {
+                                activeBot.health = 100;
+                                activeBot.isDead = false;
+                                activeBot.mesh.position.set((Math.random() - 0.5) * 20, 0, (Math.random() - 0.5) * 20 - 10);
+                                activeBot.mesh.visible = true;
+                            }
+                        }, 3000);
+                    }
                 }
             }
 
-            // Online FFA Attack
+            // Attack Online Players
             if (activeGameMode === 'ffa') {
                 for (let id in remotePlayers) {
                     const target = remotePlayers[id];
@@ -551,25 +677,18 @@
 
                     if (dist <= maxReach) {
                         const kbDir = target.position.clone().sub(player.position).normalize();
-                        const knockbackForce = 1.7;
-                        const upwardPopForce = 0.32;
-
-                        target.position.x += kbDir.x * knockbackForce;
-                        target.position.z += kbDir.z * knockbackForce;
-                        target.position.y += 0.5;
-
-                        spawnDamagePop(target.position, damage, isCrit);
+                        const isAxeHit = (selectedSlot === 2);
 
                         const targetRef = db.ref('players/' + id);
                         targetRef.once('value', (snapshot) => {
                             const data = snapshot.val();
                             if (data && data.health > 0) {
-                                const newHealth = Math.max(0, data.health - damage);
                                 targetRef.update({ 
-                                    health: newHealth,
-                                    kbX: kbDir.x * knockbackForce,
-                                    kbZ: kbDir.z * knockbackForce,
-                                    kbY: upwardPopForce
+                                    hitByDmg: damage,
+                                    hitByAxe: isAxeHit,
+                                    kbX: kbDir.x * 1.7,
+                                    kbZ: kbDir.z * 1.7,
+                                    kbY: 0.32
                                 });
                             }
                         });
@@ -578,7 +697,7 @@
             }
 
             setTimeout(() => {
-                player.rig.rightArmGroup.rotation.x = originalRotX;
+                activeArm.rotation.x = originalRotX;
                 isSwinging = false;
             }, 250);
         }
@@ -604,107 +723,139 @@
                     respawnScreen.style.display = 'none';
 
                     health = 100;
+                    gappleCount = 5;
+                    shieldBrokenUntil = 0;
                     isDead = false;
-                    velocityY = 0;
-                    kbVelX = 0;
-                    kbVelZ = 0;
+                    velocityY = 0; kbVelX = 0; kbVelZ = 0;
                     isGrounded = true;
                     player.visible = true;
                     player.position.set((Math.random() - 0.5) * 30, 0, (Math.random() - 0.5) * 30);
                     
                     document.getElementById('hp-text').innerText = 100;
                     document.getElementById('health-fill').style.width = '100%';
+                    document.getElementById('gapple-count').innerText = 5;
 
                     if (activeGameMode === 'ffa' && playerRef) {
                         playerRef.update({
-                            x: player.position.x,
-                            y: 0,
-                            z: player.position.z,
-                            health: 100,
-                            kbX: 0, kbZ: 0, kbY: 0
+                            x: player.position.x, y: 0, z: player.position.z,
+                            health: 100, kbX: 0, kbZ: 0, kbY: 0
                         });
                     }
                 }
             }, 1000);
         }
 
-        // --- 9. REALTIME DATABASE SYNC (FFA MODE) ---
+        // --- 9. REALTIME DATABASE SYNC (FFA FIX) ---
         function initFirebaseMultiplayer() {
-            if (playerRef) return; // Already initialized
-
-            playerRef = db.ref('players/' + myId);
-            playersRef = db.ref('players');
-            playerRef.onDisconnect().remove();
+            if (!playerRef) {
+                playerRef = db.ref('players/' + myId);
+                playersRef = db.ref('players');
+                playerRef.onDisconnect().remove();
+            }
 
             playerRef.set({
-                x: player.position.x,
-                y: 0,
-                z: player.position.z,
-                rotY: 0,
-                health: 100,
-                kbX: 0, kbZ: 0, kbY: 0
+                x: player.position.x, y: 0, z: player.position.z,
+                rotY: 0, health: 100, kbX: 0, kbZ: 0, kbY: 0
             });
 
-            playersRef.on('child_added', (snapshot) => {
-                const id = snapshot.key;
-                if (id !== myId && activeGameMode === 'ffa') {
+            if (!firebaseListenersAttached) {
+                firebaseListenersAttached = true;
+
+                playersRef.on('child_added', (snapshot) => {
+                    const id = snapshot.key;
+                    if (id !== myId && !remotePlayers[id]) {
+                        const data = snapshot.val();
+                        const remote = createRobloxR6(0xe74c3c, 0x2c3e50);
+                        remote.position.set(data.x || 0, data.y || 0, data.z || 0);
+                        remote.rotation.y = data.rotY || 0;
+                        scene.add(remote);
+                        remotePlayers[id] = remote;
+                    }
+                });
+
+                playersRef.on('child_changed', (snapshot) => {
+                    const id = snapshot.key;
                     const data = snapshot.val();
-                    const remote = createRobloxR6(0xe74c3c, 0x2c3e50);
-                    remote.position.set(data.x, data.y || 0, data.z);
-                    remote.rotation.y = data.rotY;
-                    scene.add(remote);
-                    remotePlayers[id] = remote;
-                }
-            });
 
-            playersRef.on('child_changed', (snapshot) => {
-                const id = snapshot.key;
-                const data = snapshot.val();
+                    if (id === myId) {
+                        // Receiving a hit from online player
+                        if (data.hitByDmg) {
+                            let dmg = data.hitByDmg;
+                            let wasShielded = isShielding;
 
-                if (id === myId) {
-                    if (data.kbX || data.kbZ || data.kbY) {
-                        kbVelX = data.kbX || 0;
-                        kbVelZ = data.kbZ || 0;
-                        if (data.kbY) {
-                            velocityY = data.kbY;
-                            isGrounded = false;
+                            if (data.hitByAxe && wasShielded) {
+                                // Axe breaks shield
+                                shieldBrokenUntil = Date.now() + 5000;
+                                isShielding = false;
+                                player.rig.shieldMesh.visible = false;
+                                spawnPopText(player.position, 'GUARD BROKEN!', 'crit');
+                            } else if (wasShielded) {
+                                dmg = Math.floor(dmg * 0.2);
+                                spawnPopText(player.position, 'BLOCKED', 'block');
+                            } else {
+                                spawnPopText(player.position, dmg, dmg > 10 ? 'crit' : 'normal');
+                            }
+
+                            if (!wasShielded) {
+                                kbVelX = data.kbX || 0;
+                                kbVelZ = data.kbZ || 0;
+                                velocityY = data.kbY || 0.3;
+                                isGrounded = false;
+                            }
+
+                            health = Math.max(0, health - dmg);
+                            document.getElementById('hp-text').innerText = health;
+                            document.getElementById('health-fill').style.width = health + '%';
+
+                            playerRef.update({ hitByDmg: null, hitByAxe: null, health });
+
+                            if (health <= 0 && !isDead) {
+                                addKillFeed(`${myId} was defeated`);
+                                triggerRespawn();
+                            }
                         }
-                        playerRef.update({ kbX: 0, kbZ: 0, kbY: 0 });
+                    } else if (remotePlayers[id]) {
+                        remotePlayers[id].visible = (data.health > 0);
+                        remotePlayers[id].position.set(data.x || 0, data.y || 0, data.z || 0);
+                        remotePlayers[id].rotation.y = data.rotY || 0;
                     }
+                });
 
-                    if (data.health !== undefined && data.health !== health) {
-                        if (data.health < health) {
-                            const dmgTaken = health - data.health;
-                            spawnDamagePop(player.position, dmgTaken, dmgTaken > 10);
-                        }
-                        health = data.health;
-                        document.getElementById('hp-text').innerText = health;
-                        document.getElementById('health-fill').style.width = health + '%';
-
-                        if (health <= 0 && !isDead) {
-                            addKillFeed(`${myId} was defeated`);
-                            triggerRespawn();
-                        }
+                playersRef.on('child_removed', (snapshot) => {
+                    const id = snapshot.key;
+                    if (remotePlayers[id]) {
+                        scene.remove(remotePlayers[id]);
+                        delete remotePlayers[id];
                     }
-                } else if (remotePlayers[id] && activeGameMode === 'ffa') {
-                    if (data.health <= 0 && remotePlayers[id].visible) {
-                        remotePlayers[id].visible = false;
-                    } else if (data.health > 0 && !remotePlayers[id].visible) {
-                        remotePlayers[id].visible = true;
-                    }
+                });
+            }
+        }
 
-                    remotePlayers[id].position.set(data.x, data.y || 0, data.z);
-                    remotePlayers[id].rotation.y = data.rotY;
-                }
-            });
+        // Floating Damage Numbers
+        function spawnPopText(position3D, text, type = 'normal') {
+            const vec = position3D.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 3.5, (Math.random() - 0.5) * 0.8));
+            vec.project(camera);
 
-            playersRef.on('child_removed', (snapshot) => {
-                const id = snapshot.key;
-                if (remotePlayers[id]) {
-                    scene.remove(remotePlayers[id]);
-                    delete remotePlayers[id];
-                }
-            });
+            const x = (vec.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(vec.y * 0.5) + 0.5) * window.innerHeight;
+
+            const pop = document.createElement('div');
+            pop.className = `damage-pop ${type}`;
+            pop.innerText = (typeof text === 'number') ? `-${text}` : text;
+            pop.style.left = `${x}px`;
+            pop.style.top = `${y}px`;
+
+            document.body.appendChild(pop);
+            setTimeout(() => pop.remove(), 750);
+        }
+
+        function addKillFeed(message) {
+            const feed = document.getElementById('killfeed');
+            const msg = document.createElement('div');
+            msg.className = 'kill-msg';
+            msg.innerText = message;
+            feed.appendChild(msg);
+            setTimeout(() => msg.remove(), 4500);
         }
 
         // --- 10. MAIN ANIMATION LOOP ---
@@ -712,14 +863,14 @@
             requestAnimationFrame(animate);
 
             if (activeGameMode !== 'menu') {
+                checkShieldState();
+                handleGoldenAppleEating();
+
                 if (!isDead) {
-                    // Knockback Friction Physics
                     player.position.x += kbVelX;
                     player.position.z += kbVelZ;
-                    kbVelX *= 0.82;
-                    kbVelZ *= 0.82;
+                    kbVelX *= 0.82; kbVelZ *= 0.82;
 
-                    // Movement
                     let inputZ = 0, inputX = 0;
                     if (keys['KeyW']) inputZ -= 1;
                     if (keys['KeyS']) inputZ += 1;
@@ -738,20 +889,15 @@
                             .addScaledVector(right, moveInput.x)
                             .normalize();
 
-                        const speed = 0.28;
+                        const speed = isShielding ? 0.12 : 0.28;
                         player.position.x += moveDir.x * speed;
                         player.position.z += moveDir.z * speed;
 
-                        if (!isShiftLock) {
-                            player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
-                        }
+                        if (!isShiftLock) player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
                     }
 
-                    if (isShiftLock) {
-                        player.rotation.y = camYaw;
-                    }
+                    if (isShiftLock) player.rotation.y = camYaw;
 
-                    // Void & Jump Physics
                     const isOnBaseplate = Math.abs(player.position.x) <= HALF_BASEPLATE && Math.abs(player.position.z) <= HALF_BASEPLATE;
 
                     if (keys['Space'] && isGrounded && isOnBaseplate) {
@@ -770,7 +916,6 @@
                         isGrounded = false;
                     }
 
-                    // Void Death
                     if (player.position.y < -35 && !isDead) {
                         health = 0;
                         document.getElementById('hp-text').innerText = 0;
@@ -780,38 +925,31 @@
                         triggerRespawn();
                     }
 
-                    // Animation Cycle
                     if (isMoving && isGrounded) {
                         walkCycleTime += 0.18;
                         const swing = Math.sin(walkCycleTime) * 0.7;
-                        player.rig.leftArmGroup.rotation.x = swing;
+                        player.rig.leftArmGroup.rotation.x = isShielding ? -Math.PI / 4 : swing;
                         if (!isSwinging) player.rig.rightArmGroup.rotation.x = -swing;
                         player.rig.leftLegGroup.rotation.x = -swing;
                         player.rig.rightLegGroup.rotation.x = swing;
                     } else {
                         walkCycleTime = 0;
-                        player.rig.leftArmGroup.rotation.x = 0;
+                        player.rig.leftArmGroup.rotation.x = isShielding ? -Math.PI / 4 : 0;
                         if (!isSwinging) player.rig.rightArmGroup.rotation.x = 0;
                         player.rig.leftLegGroup.rotation.x = 0;
                         player.rig.rightLegGroup.rotation.x = 0;
                     }
 
-                    // Sync Position in FFA
                     if (activeGameMode === 'ffa' && playerRef) {
                         playerRef.update({
-                            x: player.position.x,
-                            y: player.position.y,
-                            z: player.position.z,
-                            rotY: player.rotation.y
+                            x: player.position.x, y: player.position.y, z: player.position.z, rotY: player.rotation.y
                         });
                     }
                 }
 
-                // Update Bot AI if active
                 updateBotAI();
             }
 
-            // Roblox Camera Orbit Logic
             const targetCenter = player.position.clone().add(new THREE.Vector3(0, 3, 0));
             if (isShiftLock) {
                 const shoulderOffset = new THREE.Vector3(1.2, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
