@@ -404,7 +404,7 @@
         }
 
         const player = createRobloxR6(0x00a2ff, 0x1b2a4a);
-        player.position.set(0, 0, 0);
+        player.position.set(0, 0, 70);
         scene.add(player);
 
         const remotePlayers = {};
@@ -690,7 +690,11 @@
             shieldBrokenUntil = 0;
             isDead = false;
             player.visible = true;
-            player.position.set(0, 0, 0);
+            
+            // Spawn player facing forward towards negative Z
+            player.position.set(0, 0, 70);
+            player.rotation.y = 0;
+            camYaw = 0;
 
             if (regenTimer) clearInterval(regenTimer);
             regenTimer = null;
@@ -731,12 +735,20 @@
             if (difficultyMode === 'bot_medium') speed = 0.20;
             if (difficultyMode === 'bot_hard') speed = 0.28;
 
+            // Compute wide X-axis spread across the opposing side (-Z)
+            const spreadWidth = Math.min(200, count * 10);
+            const step = count > 1 ? spreadWidth / (count - 1) : 0;
+            const startX = -spreadWidth / 2;
+
             for (let i = 0; i < count; i++) {
                 const botMesh = createRobloxR6(0xe74c3c, 0x2c3e50);
                 
-                const angle = (i / count) * Math.PI * 2;
-                const spawnRadius = 14 + Math.random() * 8;
-                botMesh.position.set(Math.cos(angle) * spawnRadius, 0, Math.sin(angle) * spawnRadius);
+                // Calculate separated position on opposing side
+                const spawnX = (count === 1) ? 0 : startX + (i * step) + ((Math.random() - 0.5) * 3);
+                const spawnZ = -60 - (Math.random() * 30); // Far side of baseplate (-60 to -90)
+                
+                botMesh.position.set(spawnX, 0, spawnZ);
+                botMesh.rotation.y = Math.PI; // Facing towards player
                 scene.add(botMesh);
 
                 activeBots.push({
@@ -967,8 +979,11 @@
                                 closestBot.health = 100;
                                 closestBot.gappleCount = startingGapples;
                                 closestBot.isDead = false;
-                                const angle = Math.random() * Math.PI * 2;
-                                closestBot.mesh.position.set(Math.cos(angle) * 18, 0, Math.sin(angle) * 18);
+                                
+                                // Respawn back on the opposing side
+                                const respawnX = (Math.random() - 0.5) * 180;
+                                const respawnZ = -60 - (Math.random() * 30);
+                                closestBot.mesh.position.set(respawnX, 0, respawnZ);
                                 closestBot.mesh.visible = true;
                             }
                         }, 3500);
@@ -1040,7 +1055,10 @@
                     velocityY = 0; kbVelX = 0; kbVelZ = 0;
                     isGrounded = true;
                     player.visible = true;
-                    player.position.set((Math.random() - 0.5) * 30, 0, (Math.random() - 0.5) * 30);
+
+                    // Respawn player on South side
+                    player.position.set((Math.random() - 0.5) * 40, 0, 70);
+                    player.rotation.y = 0;
                     
                     updateHealthUI();
                     document.getElementById('gapple-count').innerText = startingGapples;
