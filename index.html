@@ -339,7 +339,6 @@
         grid.position.y = 0.01;
         scene.add(grid);
 
-        // Cobweb management
         const activeCobwebs = [];
         let cobwebCount = 10;
 
@@ -504,7 +503,6 @@
         let isSwinging = false;
         let walkCycleTime = 0;
 
-        // Physics & Jump variables
         let verticalVelocity = 0;
         let isGrounded = true;
         const gravity = -35;
@@ -528,7 +526,6 @@
         document.addEventListener('keydown', (e) => {
             if (activeGameMode === 'menu') return;
             
-            // Fullscreen toggle key [F]
             if (e.code === 'KeyF') {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen().catch(err => console.log(err));
@@ -594,7 +591,6 @@
             }
         });
 
-        // Mouse scroll handler strictly for smooth camera zooming without page scrolling issues
         document.addEventListener('wheel', (e) => {
             if (activeGameMode === 'menu') return;
             e.preventDefault();
@@ -604,8 +600,10 @@
         function toggleShiftLock() {
             isShiftLock = !isShiftLock;
             document.getElementById('shiftlock-icon').style.display = isShiftLock ? 'block' : 'none';
-            if (isShiftLock) document.body.requestPointerLock();
-            else if (document.pointerLockElement) document.exitPointerLock();
+            if (isShiftLock) {
+                // Instantly lock player orientation to camera yaw on shiftlock enable
+                player.rotation.y = camYaw;
+            }
         }
 
         function triggerDash() {
@@ -963,14 +961,19 @@
                 if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
 
                 const inWeb = isInsideCobweb(player.position);
-                let speed = inWeb ? 2.5 : 8.5;
+                let speed = inWeb ? 3.0 : 16.0; // Restored proper movement speed
 
                 if (moveX !== 0 || moveZ !== 0) {
                     const moveDir = new THREE.Vector3(moveX, 0, moveZ).normalize();
                     moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), camYaw);
                     
                     player.position.addScaledVector(moveDir, speed * dt);
-                    player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                    
+                    if (isShiftLock) {
+                        player.rotation.y = camYaw; // Instantly face camera direction when shiftlocked
+                    } else {
+                        player.rotation.y = Math.atan2(moveDir.x, moveDir.z);
+                    }
 
                     walkCycleTime += dt * 12;
                     player.rig.leftLegGroup.rotation.x = Math.sin(walkCycleTime) * 0.6;
@@ -978,16 +981,18 @@
                 } else {
                     player.rig.leftLegGroup.rotation.x = 0;
                     player.rig.rightLegGroup.rotation.x = 0;
+                    if (isShiftLock) {
+                        player.rotation.y = camYaw;
+                    }
                 }
 
-                // Jump logic: Blocks jumping if mid-air (isGrounded is false) OR if caught inside a cobweb
                 if ((keys['Space']) && isGrounded && !inWeb) {
                     verticalVelocity = 12;
                     isGrounded = false;
                 }
 
                 if (inWeb) {
-                    verticalVelocity = 0; // nullify gravity float inside web
+                    verticalVelocity = 0;
                 } else {
                     verticalVelocity += gravity * dt;
                 }
